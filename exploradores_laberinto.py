@@ -47,6 +47,15 @@ COLORES_CELDAS = {
     "*": "#fb923c",   # Ruta final
 }
 
+SIMBOLOS_MAPA_BASE = ["E", ".", "#", "T", "X", "S"]
+SIMBOLOS_MARCAS = ["V", "R", "*"]
+SIMBOLOS_VALIDOS = SIMBOLOS_MAPA_BASE + SIMBOLOS_MARCAS
+
+MIN_FILAS = 5
+MIN_COLUMNAS = 5
+MAX_FILAS = 20
+MAX_COLUMNAS = 20
+
 
 # =========================================================
 # VARIABLES GLOBALES
@@ -145,7 +154,7 @@ def crear_menu_superior():
     fila_1 = tk.Frame(menu, bg=COLOR_PANEL)
     fila_1.pack(anchor="center", pady=(7, 3))
 
-    crear_boton_menu(fila_1, "Crear mapa", accion_pendiente, COLOR_AZUL)
+    crear_boton_menu(fila_1, "Crear mapa", abrir_ventana_crear_mapa, COLOR_AZUL)
     crear_boton_menu(fila_1, "Cargar mapa", accion_pendiente, COLOR_AZUL_2)
     crear_boton_menu(fila_1, "Guardar mapa", accion_pendiente, COLOR_AZUL)
     crear_boton_menu(
@@ -897,7 +906,251 @@ def contar_simbolo(simbolo):
 
     return cantidad
 
+def validar_mapa(matriz):
+    """
+    Valida que una matriz cumpla las reglas principales del proyecto.
+    Retorna:
+    - True si el mapa es valido.
+    - False si el mapa es invalido.
+    - Un mensaje explicando el resultado.
+    """
 
+    if matriz == []:
+        return False, "Error: no se puede resolver un mapa vacio."
+
+    filas = len(matriz)
+
+    if filas < MIN_FILAS:
+        return False, "Error: el mapa debe tener al menos 5 filas."
+
+    if filas > MAX_FILAS:
+        return False, "Error: el mapa no puede tener mas de 20 filas."
+
+    columnas = len(matriz[0])
+
+    if columnas == 0:
+        return False, "Error: el mapa tiene una fila vacia."
+
+    if columnas < MIN_COLUMNAS:
+        return False, "Error: el mapa debe tener al menos 5 columnas."
+
+    if columnas > MAX_COLUMNAS:
+        return False, "Error: el mapa no puede tener mas de 20 columnas."
+
+    cantidad_entradas = 0
+    cantidad_tesoros = 0
+
+    for indice_fila in range(filas):
+        fila = matriz[indice_fila]
+
+        if len(fila) != columnas:
+            return False, "Error: todas las filas del mapa deben tener la misma cantidad de columnas."
+
+        for indice_columna in range(columnas):
+            simbolo = fila[indice_columna]
+
+            if simbolo not in SIMBOLOS_VALIDOS:
+                return False, (
+                    "Error: el mapa contiene un simbolo invalido: "
+                    + str(simbolo)
+                    + " en fila "
+                    + str(indice_fila)
+                    + ", columna "
+                    + str(indice_columna)
+                    + "."
+                )
+
+            if simbolo == "E":
+                cantidad_entradas = cantidad_entradas + 1
+
+            elif simbolo == "T":
+                cantidad_tesoros = cantidad_tesoros + 1
+
+    if cantidad_entradas == 0:
+        return False, "Error: el mapa no tiene entrada."
+
+    if cantidad_entradas > 1:
+        return False, "Error: el mapa tiene mas de una entrada."
+
+    if cantidad_tesoros == 0:
+        return False, "Error: el mapa no contiene tesoros."
+
+    return True, "Mapa valido."
+
+
+def mostrar_validacion_mapa():
+    valido, mensaje = validar_mapa(mapa)
+
+    escribir_informacion(mensaje)
+
+    if valido:
+        messagebox.showinfo("Validacion del mapa", mensaje)
+    else:
+        messagebox.showerror("Validacion del mapa", mensaje)
+        
+def abrir_ventana_crear_mapa():
+    """
+    Abre una ventana secundaria para crear un mapa nuevo.
+    El usuario indica filas y columnas.
+    """
+
+    ventana_crear = tk.Toplevel(ventana)
+    ventana_crear.title("Crear mapa nuevo")
+    ventana_crear.geometry("360x260")
+    ventana_crear.resizable(False, False)
+    ventana_crear.configure(bg=COLOR_FONDO)
+    ventana_crear.grab_set()
+
+    etiqueta_titulo = tk.Label(
+        ventana_crear,
+        text="CREAR MAPA NUEVO",
+        font=("Arial", 14, "bold"),
+        bg=COLOR_FONDO,
+        fg=COLOR_DORADO
+    )
+    etiqueta_titulo.pack(pady=(18, 8))
+
+    etiqueta_info = tk.Label(
+        ventana_crear,
+        text="Ingrese dimensiones entre 5 y 20.",
+        font=("Arial", 10, "bold"),
+        bg=COLOR_FONDO,
+        fg=COLOR_TEXTO_SUAVE
+    )
+    etiqueta_info.pack(pady=(0, 12))
+
+    marco_formulario = tk.Frame(ventana_crear, bg=COLOR_PANEL, bd=2, relief="ridge")
+    marco_formulario.pack(padx=20, pady=5, fill="x")
+
+    etiqueta_filas = tk.Label(
+        marco_formulario,
+        text="Filas:",
+        font=("Arial", 10, "bold"),
+        bg=COLOR_PANEL,
+        fg=COLOR_TEXTO
+    )
+    etiqueta_filas.grid(row=0, column=0, padx=12, pady=12, sticky="w")
+
+    entrada_filas = tk.Entry(
+        marco_formulario,
+        width=10,
+        font=("Arial", 10, "bold"),
+        justify="center"
+    )
+    entrada_filas.grid(row=0, column=1, padx=12, pady=12)
+
+    etiqueta_columnas = tk.Label(
+        marco_formulario,
+        text="Columnas:",
+        font=("Arial", 10, "bold"),
+        bg=COLOR_PANEL,
+        fg=COLOR_TEXTO
+    )
+    etiqueta_columnas.grid(row=1, column=0, padx=12, pady=12, sticky="w")
+
+    entrada_columnas = tk.Entry(
+        marco_formulario,
+        width=10,
+        font=("Arial", 10, "bold"),
+        justify="center"
+    )
+    entrada_columnas.grid(row=1, column=1, padx=12, pady=12)
+
+    entrada_filas.insert(0, "10")
+    entrada_columnas.insert(0, "10")
+
+    def confirmar_creacion():
+        global mapa
+
+        texto_filas = entrada_filas.get()
+        texto_columnas = entrada_columnas.get()
+
+        if not texto_filas.isdigit() or not texto_columnas.isdigit():
+            messagebox.showerror(
+                "Error al crear mapa",
+                "Las filas y columnas deben ser numeros enteros."
+            )
+            return
+
+        filas = int(texto_filas)
+        columnas = int(texto_columnas)
+
+        if filas < MIN_FILAS or filas > MAX_FILAS:
+            messagebox.showerror(
+                "Error al crear mapa",
+                "La cantidad de filas debe estar entre 5 y 20."
+            )
+            return
+
+        if columnas < MIN_COLUMNAS or columnas > MAX_COLUMNAS:
+            messagebox.showerror(
+                "Error al crear mapa",
+                "La cantidad de columnas debe estar entre 5 y 20."
+            )
+            return
+
+        confirmar = messagebox.askyesno(
+            "Confirmar nuevo mapa",
+            "Crear un mapa nuevo eliminara el mapa actual.\n\nDesea continuar?"
+        )
+
+        if not confirmar:
+            return
+
+        nuevo_mapa = []
+
+        for fila in range(filas):
+            nueva_fila = []
+
+            for columna in range(columnas):
+                nueva_fila.append(".")
+
+            nuevo_mapa.append(nueva_fila)
+
+        mapa = nuevo_mapa
+
+        dibujar_mapa()
+
+        escribir_informacion(
+            "Mapa nuevo creado correctamente.\n"
+            "Dimensiones: "
+            + str(filas)
+            + " filas x "
+            + str(columnas)
+            + " columnas.\n"
+            "Recuerde colocar una entrada E y al menos un tesoro T antes de buscar."
+        )
+
+        ventana_crear.destroy()
+
+    marco_botones = tk.Frame(ventana_crear, bg=COLOR_FONDO)
+    marco_botones.pack(pady=16)
+
+    boton_crear = tk.Button(
+        marco_botones,
+        text="Crear",
+        command=confirmar_creacion,
+        width=12,
+        font=("Arial", 10, "bold"),
+        bg=COLOR_VERDE,
+        fg="white",
+        relief="flat",
+        cursor="hand2"
+    )
+    boton_crear.pack(side="left", padx=8)
+
+    boton_cancelar = tk.Button(
+        marco_botones,
+        text="Cancelar",
+        command=ventana_crear.destroy,
+        width=12,
+        font=("Arial", 10, "bold"),
+        bg=COLOR_ROJO,
+        fg="white",
+        relief="flat",
+        cursor="hand2"
+    )
+    boton_cancelar.pack(side="left", padx=8)     
 # =========================================================
 # ACCIONES TEMPORALES
 # =========================================================
