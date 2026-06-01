@@ -1,0 +1,50 @@
+EXPLORADORES DEL LABERINTO PERDIDO
+REPORTE DE BUSQUEDA
+====================================
+
+Fecha y hora de generacion:
+01/06/2026 01:45:46
+
+Tipo de busqueda:
+Buscar todos los tesoros
+
+Mapa original:
+############
+#E...#.....#
+###.#.###T.#
+#...#...#..#
+#.#####.#X##
+#.....#.#..#
+#.###.#.#T##
+#.#T#.#....#
+#.#.#.####.#
+#...#......#
+###X######S#
+############
+
+Mapa final despues de la busqueda:
+############
+#E**R#.....#
+###*#R###T.#
+#***#RRR#..#
+#*#####R#X##
+#*****#R#RR#
+#*###*#R#T##
+#*#T#*#RR**#
+#*#*#*####*#
+#***#******#
+###X######S#
+############
+
+Tesoros totales:
+3
+
+Tesoros encontrados:
+2
+
+Posiciones de tesoros encontrados:
+Tesoro 1: fila 6, columna 9
+Tesoro 2: fila 7, columna 3
+
+Resultado:
+Existe al menos un tesoro inaccesible.
