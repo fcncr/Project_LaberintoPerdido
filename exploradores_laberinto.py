@@ -6,6 +6,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog, messagebox
+from datetime import datetime
 
 # =========================================================
 # CONSTANTES DE DISENO
@@ -56,7 +57,14 @@ MIN_COLUMNAS = 5
 MAX_FILAS = 20
 MAX_COLUMNAS = 20
 
+DIRECCIONES_MOVIMIENTO = [
+    [-1, 0],  # Arriba
+    [0, 1],   # Derecha
+    [1, 0],   # Abajo
+    [0, -1]   # Izquierda
+]
 
+TIEMPO_ANIMACION = 50
 # =========================================================
 # VARIABLES GLOBALES
 # =========================================================
@@ -66,7 +74,9 @@ canvas_mapa = None
 texto_informacion = None
 mapa = []
 
-
+tipo_celda_seleccionado = "."
+modo_edicion_activo = False
+ultimo_resultado_busqueda = None
 # =========================================================
 # MAPAS EN ARCHIVOS
 # =========================================================
@@ -155,23 +165,23 @@ def crear_menu_superior():
     fila_1.pack(anchor="center", pady=(7, 3))
 
     crear_boton_menu(fila_1, "Crear mapa", abrir_ventana_crear_mapa, COLOR_AZUL)
-    crear_boton_menu(fila_1, "Cargar mapa", accion_pendiente, COLOR_AZUL_2)
-    crear_boton_menu(fila_1, "Guardar mapa", accion_pendiente, COLOR_AZUL)
+    crear_boton_menu(fila_1, "Cargar mapa", cargar_mapa, COLOR_AZUL_2)
+    crear_boton_menu(fila_1, "Guardar mapa", guardar_mapa, COLOR_AZUL)
     crear_boton_menu(
-        fila_1,
-        "Editar mapa",
-        abrir_editor_placeholder,
-        COLOR_AMARILLO,
-        color_texto="black"
-    )
+    fila_1,
+    "Editar mapa",
+    abrir_editor_mapa,
+    COLOR_AMARILLO,
+    color_texto="black"
+)
 
     fila_2 = tk.Frame(menu, bg=COLOR_PANEL)
     fila_2.pack(anchor="center", pady=(3, 7))
 
-    crear_boton_menu(fila_2, "Buscar primer tesoro", accion_pendiente, COLOR_VERDE, ancho=20)
-    crear_boton_menu(fila_2, "Buscar todos los tesoros", accion_pendiente, COLOR_VERDE_2, ancho=22)
-    crear_boton_menu(fila_2, "Limpiar marcas", accion_pendiente, COLOR_GRIS)
-    crear_boton_menu(fila_2, "Guardar resultado", accion_pendiente, COLOR_MORADO, ancho=18)
+    crear_boton_menu(fila_2, "Buscar primer tesoro", buscar_primer_tesoro, COLOR_VERDE, ancho=20)
+    crear_boton_menu(fila_2, "Buscar todos los tesoros", buscar_todos_los_tesoros, COLOR_VERDE_2, ancho=22)
+    crear_boton_menu(fila_2, "Limpiar marcas", limpiar_marcas, COLOR_GRIS)
+    crear_boton_menu(fila_2, "Guardar resultado", guardar_resultado, COLOR_MORADO, ancho=18)
     crear_boton_menu(fila_2, "Salir", salir, COLOR_ROJO, ancho=10)
 
 
@@ -1151,6 +1161,1594 @@ def abrir_ventana_crear_mapa():
         cursor="hand2"
     )
     boton_cancelar.pack(side="left", padx=8)     
+
+def abrir_editor_mapa():
+    """
+    Abre una ventana de herramientas para editar el mapa visualmente.
+    El usuario selecciona un tipo de celda y luego hace clic en el canvas.
+    """
+
+    global modo_edicion_activo
+    global tipo_celda_seleccionado
+
+    if mapa == []:
+        messagebox.showerror(
+            "Editar mapa",
+            "No hay ningun mapa para editar."
+        )
+        return
+
+    modo_edicion_activo = True
+    tipo_celda_seleccionado = "."
+
+    canvas_mapa.bind("<Button-1>", editar_celda_canvas)
+
+    ventana_editor = tk.Toplevel(ventana)
+    ventana_editor.title("Editor de mapa")
+    ventana_editor.geometry("400x360")
+    ventana_editor.resizable(False, False)
+    ventana_editor.configure(bg=COLOR_FONDO)
+
+    # IMPORTANTE:
+    # No usar grab_set(), porque necesitamos poder hacer clic en el canvas principal.
+    # ventana_editor.grab_set()
+
+    def cerrar_editor():
+        global modo_edicion_activo
+
+        modo_edicion_activo = False
+        canvas_mapa.unbind("<Button-1>")
+
+        escribir_informacion(
+            "Modo edicion finalizado.\n"
+            "Puede validar, guardar o ejecutar busquedas cuando el mapa este completo."
+        )
+
+        if ventana_editor.winfo_exists():
+            ventana_editor.destroy()
+
+    etiqueta_titulo = tk.Label(
+        ventana_editor,
+        text="EDITOR VISUAL DEL MAPA",
+        font=("Arial", 14, "bold"),
+        bg=COLOR_FONDO,
+        fg=COLOR_DORADO
+    )
+    etiqueta_titulo.pack(pady=(16, 6))
+
+    etiqueta_info = tk.Label(
+        ventana_editor,
+        text="Seleccione un tipo de celda y haga clic sobre el mapa.",
+        font=("Arial", 10, "bold"),
+        bg=COLOR_FONDO,
+        fg=COLOR_TEXTO_SUAVE
+    )
+    etiqueta_info.pack(pady=(0, 10))
+
+    marco_herramientas = tk.Frame(
+        ventana_editor,
+        bg=COLOR_PANEL,
+        bd=2,
+        relief="ridge"
+    )
+    marco_herramientas.pack(padx=16, pady=8, fill="both", expand=True)
+
+    crear_boton_herramienta(marco_herramientas, "Entrada E", "E", 0, 0, COLOR_VERDE)
+    crear_boton_herramienta(marco_herramientas, "Camino .", ".", 0, 1, "#d6c7a1", "black")
+    crear_boton_herramienta(marco_herramientas, "Pared #", "#", 1, 0, COLOR_GRIS)
+    crear_boton_herramienta(marco_herramientas, "Tesoro T", "T", 1, 1, COLOR_AMARILLO, "black")
+    crear_boton_herramienta(marco_herramientas, "Trampa X", "X", 2, 0, COLOR_ROJO)
+    crear_boton_herramienta(marco_herramientas, "Salida S", "S", 2, 1, COLOR_AZUL)
+
+    boton_cerrar = tk.Button(
+        ventana_editor,
+        text="Cerrar editor",
+        command=cerrar_editor,
+        width=18,
+        font=("Arial", 10, "bold"),
+        bg=COLOR_ROJO,
+        fg="white",
+        relief="flat",
+        cursor="hand2"
+    )
+    boton_cerrar.pack(pady=(4, 14))
+
+    ventana_editor.protocol("WM_DELETE_WINDOW", cerrar_editor)
+
+    escribir_informacion(
+        "Modo edicion activado.\n"
+        "Herramienta actual: Camino .\n"
+        "Seleccione una herramienta y haga clic sobre una celda del mapa."
+    )
+def crear_boton_herramienta(padre, texto, simbolo, fila, columna, color, color_texto="white"):
+    """
+    Crea un boton para seleccionar el tipo de celda que se colocara en el mapa.
+    """
+
+    boton = tk.Button(
+        padre,
+        text=texto,
+        command=lambda: seleccionar_tipo_celda(simbolo),
+        width=16,
+        font=("Arial", 10, "bold"),
+        bg=color,
+        fg=color_texto,
+        activebackground=COLOR_HOVER,
+        activeforeground=COLOR_TEXTO_HOVER,
+        relief="flat",
+        bd=0,
+        padx=8,
+        pady=8,
+        cursor="hand2"
+    )
+
+    boton.grid(row=fila, column=columna, padx=12, pady=12)
+
+
+def seleccionar_tipo_celda(simbolo):
+    """
+    Guarda el simbolo que el usuario quiere colocar en el mapa.
+    """
+
+    global tipo_celda_seleccionado
+
+    tipo_celda_seleccionado = simbolo
+
+    escribir_informacion(
+        "Herramienta seleccionada: "
+        + obtener_nombre_simbolo(simbolo)
+        + " ("
+        + simbolo
+        + ").\n"
+        "Ahora haga clic sobre una celda del mapa."
+    )
+
+
+def obtener_nombre_simbolo(simbolo):
+    """
+    Retorna el nombre descriptivo de un simbolo del mapa.
+    """
+
+    if simbolo == "E":
+        return "Entrada"
+
+    if simbolo == ".":
+        return "Camino"
+
+    if simbolo == "#":
+        return "Pared"
+
+    if simbolo == "T":
+        return "Tesoro"
+
+    if simbolo == "X":
+        return "Trampa"
+
+    if simbolo == "S":
+        return "Salida"
+
+    return "Desconocido"
+
+
+def editar_celda_canvas(evento):
+    """
+    Detecta el clic sobre el canvas y modifica la celda correspondiente.
+    """
+
+    if not modo_edicion_activo:
+        return
+
+    posicion = obtener_celda_por_click(evento.x, evento.y)
+
+    if posicion is None:
+        escribir_informacion(
+            "Clic fuera del mapa.\n"
+            "Seleccione una celda dentro de la cuadricula."
+        )
+        return
+
+    fila = posicion[0]
+    columna = posicion[1]
+
+    colocar_celda(fila, columna)
+
+
+def obtener_celda_por_click(x, y):
+    """
+    Convierte coordenadas del canvas a posicion de matriz.
+    Retorna [fila, columna] o None si el clic fue fuera del mapa.
+    """
+
+    filas = len(mapa)
+
+    if filas == 0:
+        return None
+
+    columnas = len(mapa[0])
+
+    if columnas == 0:
+        return None
+
+    tam_celda = calcular_tamano_celda(filas, columnas)
+
+    ancho_mapa = columnas * tam_celda
+    alto_mapa = filas * tam_celda
+
+    inicio_x = (AREA_MAPA - ancho_mapa) // 2
+    inicio_y = (AREA_MAPA - alto_mapa) // 2
+
+    fin_x = inicio_x + ancho_mapa
+    fin_y = inicio_y + alto_mapa
+
+    if x < inicio_x or x >= fin_x:
+        return None
+
+    if y < inicio_y or y >= fin_y:
+        return None
+
+    columna = (x - inicio_x) // tam_celda
+    fila = (y - inicio_y) // tam_celda
+
+    return [fila, columna]
+
+
+def colocar_celda(fila, columna):
+    """
+    Coloca el simbolo seleccionado en la celda indicada.
+    Si se coloca una entrada E, elimina la entrada anterior para cumplir la regla de entrada unica.
+    """
+
+    global mapa
+
+    simbolo = tipo_celda_seleccionado
+
+    if simbolo == "E":
+        eliminar_entrada_existente()
+
+    mapa[fila][columna] = simbolo
+
+    dibujar_mapa()
+
+    escribir_informacion(
+        "Celda modificada correctamente.\n"
+        "Fila: "
+        + str(fila)
+        + " | Columna: "
+        + str(columna)
+        + "\nNuevo valor: "
+        + obtener_nombre_simbolo(simbolo)
+        + " ("
+        + simbolo
+        + ")"
+    )
+
+
+def eliminar_entrada_existente():
+    """
+    Elimina cualquier entrada E anterior antes de colocar una nueva.
+    Esto asegura que el mapa tenga como maximo una entrada.
+    """
+
+    for fila in range(len(mapa)):
+        for columna in range(len(mapa[fila])):
+            if mapa[fila][columna] == "E":
+                mapa[fila][columna] = "."
+
+def obtener_celda_por_click(x, y):
+    """
+    Convierte coordenadas del canvas a posicion de matriz.
+    Retorna [fila, columna] o None si el clic fue fuera del mapa.
+    """
+
+    filas = len(mapa)
+
+    if filas == 0:
+        return None
+
+    columnas = len(mapa[0])
+
+    if columnas == 0:
+        return None
+
+    tam_celda = calcular_tamano_celda(filas, columnas)
+
+    ancho_mapa = columnas * tam_celda
+    alto_mapa = filas * tam_celda
+
+    inicio_x = (AREA_MAPA - ancho_mapa) // 2
+    inicio_y = (AREA_MAPA - alto_mapa) // 2
+
+    fin_x = inicio_x + ancho_mapa
+    fin_y = inicio_y + alto_mapa
+
+    if x < inicio_x or x >= fin_x:
+        return None
+
+    if y < inicio_y or y >= fin_y:
+        return None
+
+    columna = (x - inicio_x) // tam_celda
+    fila = (y - inicio_y) // tam_celda
+
+    return [fila, columna]
+
+
+def colocar_celda(fila, columna):
+    """
+    Coloca el simbolo seleccionado en la celda indicada.
+    Si se coloca una entrada E, elimina la entrada anterior para cumplir la regla de entrada unica.
+    """
+
+    global mapa
+
+    simbolo = tipo_celda_seleccionado
+
+    if simbolo == "E":
+        eliminar_entrada_existente()
+
+    mapa[fila][columna] = simbolo
+
+    dibujar_mapa()
+
+    escribir_informacion(
+        "Celda modificada correctamente.\n"
+        "Fila: "
+        + str(fila)
+        + " | Columna: "
+        + str(columna)
+        + "\nNuevo valor: "
+        + obtener_nombre_simbolo(simbolo)
+        + " ("
+        + simbolo
+        + ")"
+    )
+
+
+def eliminar_entrada_existente():
+    """
+    Elimina cualquier entrada E anterior antes de colocar una nueva.
+    Esto asegura que el mapa tenga como maximo una entrada.
+    """
+
+    for fila in range(len(mapa)):
+        for columna in range(len(mapa[fila])):
+            if mapa[fila][columna] == "E":
+                mapa[fila][columna] = "."
+
+
+def cargar_mapa():
+    """
+    Permite cargar un mapa desde un archivo .txt.
+    Cada linea del archivo representa una fila del mapa.
+    Cada caracter representa una celda.
+    """
+
+    global mapa
+
+    ruta_archivo = filedialog.askopenfilename(
+        title="Seleccionar archivo de mapa",
+        filetypes=[
+            ("Archivos de texto", "*.txt"),
+            ("Todos los archivos", "*.*")
+        ]
+    )
+
+    if ruta_archivo == "":
+        escribir_informacion(
+            "Carga cancelada.\n"
+            "No se selecciono ningun archivo."
+        )
+        return
+
+    try:
+        archivo = open(ruta_archivo, "r", encoding="utf-8")
+        lineas = archivo.readlines()
+        archivo.close()
+
+        nuevo_mapa = []
+
+        for linea in lineas:
+            linea = linea.strip()
+
+            if linea != "":
+                nueva_fila = list(linea)
+                nuevo_mapa.append(nueva_fila)
+
+        valido, mensaje = validar_mapa(nuevo_mapa)
+
+        if not valido:
+            escribir_informacion(
+                "No se pudo cargar el mapa.\n"
+                + mensaje
+            )
+
+            messagebox.showerror(
+                "Archivo invalido",
+                mensaje
+            )
+
+            return
+
+        mapa = nuevo_mapa
+
+        dibujar_mapa()
+
+        escribir_informacion(
+            "Mapa cargado correctamente.\n"
+            "Archivo: "
+            + ruta_archivo
+            + "\nDimensiones: "
+            + str(len(mapa))
+            + " filas x "
+            + str(len(mapa[0]))
+            + " columnas."
+        )
+
+        messagebox.showinfo(
+            "Mapa cargado",
+            "El mapa se cargo correctamente."
+        )
+
+    except Exception as error:
+        escribir_informacion(
+            "Error al cargar el archivo.\n"
+            + str(error)
+        )
+
+        messagebox.showerror(
+            "Error al cargar archivo",
+            "No se pudo cargar el archivo.\n\n"
+            + str(error)
+        )    
+# =========================================================
+# GUARDADO DE MAPAS
+# =========================================================
+
+def limpiar_mapa_para_guardar(matriz):
+    """
+    Crea una copia limpia del mapa para guardarlo como mapa base.
+    Las marcas de busqueda V, R y * se convierten en camino libre.
+    No modifica el mapa original que esta en pantalla.
+    """
+
+    mapa_limpio = []
+
+    for fila in matriz:
+        nueva_fila = []
+
+        for celda in fila:
+            if celda == "V" or celda == "R" or celda == "*":
+                nueva_fila.append(".")
+            else:
+                nueva_fila.append(celda)
+
+        mapa_limpio.append(nueva_fila)
+
+    return mapa_limpio
+
+
+def convertir_mapa_a_texto(matriz):
+    """
+    Convierte una matriz de caracteres en texto con formato de archivo .txt.
+    Cada fila de la matriz se convierte en una linea.
+    """
+
+    texto = ""
+
+    for fila in matriz:
+        linea = ""
+
+        for celda in fila:
+            linea = linea + celda
+
+        texto = texto + linea + "\n"
+
+    return texto
+
+
+def guardar_mapa():
+    """
+    Guarda el mapa actual en un archivo .txt.
+    El archivo se guarda limpio, sin marcas V, R ni *.
+    """
+
+    if mapa == []:
+        messagebox.showerror(
+            "Guardar mapa",
+            "No hay ningun mapa para guardar."
+        )
+        return
+
+    mapa_limpio = limpiar_mapa_para_guardar(mapa)
+
+    valido, mensaje = validar_mapa(mapa_limpio)
+
+    if not valido:
+        escribir_informacion(
+            "No se puede guardar el mapa.\n"
+            + mensaje
+        )
+
+        messagebox.showerror(
+            "Mapa invalido",
+            "El mapa no cumple las reglas del proyecto.\n\n"
+            + mensaje
+        )
+        return
+
+    ruta_archivo = filedialog.asksaveasfilename(
+        title="Guardar mapa",
+        defaultextension=".txt",
+        filetypes=[
+            ("Archivos de texto", "*.txt"),
+            ("Todos los archivos", "*.*")
+        ]
+    )
+
+    if ruta_archivo == "":
+        escribir_informacion(
+            "Guardado cancelado.\n"
+            "No se selecciono ninguna ubicacion."
+        )
+        return
+
+    try:
+        texto_mapa = convertir_mapa_a_texto(mapa_limpio)
+
+        archivo = open(ruta_archivo, "w", encoding="utf-8")
+        archivo.write(texto_mapa)
+        archivo.close()
+
+        escribir_informacion(
+            "Mapa guardado correctamente.\n"
+            "Archivo: "
+            + ruta_archivo
+            + "\nFormato: archivo .txt limpio, sin marcas de busqueda."
+        )
+
+        messagebox.showinfo(
+            "Mapa guardado",
+            "El mapa se guardo correctamente."
+        )
+
+    except Exception as error:
+        escribir_informacion(
+            "Error al guardar el mapa.\n"
+            + str(error)
+        )
+
+        messagebox.showerror(
+            "Error al guardar",
+            "No se pudo guardar el mapa.\n\n"
+            + str(error)
+        )
+# =========================================================
+# LIMPIEZA DE MARCAS
+# =========================================================
+
+def limpiar_marcas():
+    """
+    Limpia las marcas generadas por el algoritmo de busqueda.
+    Convierte V, R y * en caminos libres.
+    No altera entrada, tesoros, paredes, trampas ni salidas.
+    """
+
+    global mapa
+
+    if mapa == []:
+        messagebox.showerror(
+            "Limpiar marcas",
+            "No hay ningun mapa para limpiar."
+        )
+        return
+
+    cantidad_limpiadas = 0
+
+    for fila in range(len(mapa)):
+        for columna in range(len(mapa[fila])):
+            if mapa[fila][columna] == "V" or mapa[fila][columna] == "R" or mapa[fila][columna] == "*":
+                mapa[fila][columna] = "."
+                cantidad_limpiadas = cantidad_limpiadas + 1
+
+    dibujar_mapa()
+
+    escribir_informacion(
+        "Limpieza de marcas finalizada.\n"
+        "Casillas limpiadas: "
+        + str(cantidad_limpiadas)
+        + ".\n"
+        "Se conservaron entrada, tesoros, paredes, trampas y salidas."
+    )
+
+    if cantidad_limpiadas == 0:
+        messagebox.showinfo(
+            "Limpiar marcas",
+            "No habia marcas de busqueda para limpiar."
+        )
+    else:
+        messagebox.showinfo(
+            "Limpiar marcas",
+            "Las marcas de busqueda fueron eliminadas correctamente."
+        )
+
+# =========================================================
+# UTILIDADES BASE PARA BACKTRACKING
+# =========================================================
+
+def buscar_entrada(matriz):
+    """
+    Busca la posicion de la entrada E dentro del mapa.
+    Retorna [fila, columna] si la encuentra.
+    Retorna None si no existe entrada.
+    """
+
+    for fila in range(len(matriz)):
+        for columna in range(len(matriz[fila])):
+            if matriz[fila][columna] == "E":
+                return [fila, columna]
+
+    return None
+
+
+def contar_tesoros_matriz(matriz):
+    """
+    Cuenta cuantos tesoros T existen en el mapa.
+    Esta funcion solo cuenta tesoros para el resumen.
+    No se usa para guiar el camino del algoritmo.
+    """
+
+    cantidad = 0
+
+    for fila in range(len(matriz)):
+        for columna in range(len(matriz[fila])):
+            if matriz[fila][columna] == "T":
+                cantidad = cantidad + 1
+
+    return cantidad
+
+
+def copiar_matriz(matriz):
+    """
+    Crea una copia independiente de una matriz.
+    Se usara para guardar el mapa original antes de modificarlo con V, R o *.
+    """
+
+    copia = []
+
+    for fila in matriz:
+        nueva_fila = []
+
+        for celda in fila:
+            nueva_fila.append(celda)
+
+        copia.append(nueva_fila)
+
+    return copia
+
+
+def posicion_dentro_del_mapa(matriz, fila, columna):
+    """
+    Verifica si una posicion esta dentro de los limites del mapa.
+    """
+
+    if fila < 0:
+        return False
+
+    if columna < 0:
+        return False
+
+    if fila >= len(matriz):
+        return False
+
+    if len(matriz) == 0:
+        return False
+
+    if columna >= len(matriz[0]):
+        return False
+
+    return True
+
+
+def es_celda_transitable(matriz, fila, columna):
+    """
+    Verifica si una celda puede ser recorrida por el explorador.
+    Son transitables:
+    E, ., T y S
+
+    No son transitables:
+    #, X, V, R y *
+    """
+
+    if not posicion_dentro_del_mapa(matriz, fila, columna):
+        return False
+
+    celda = matriz[fila][columna]
+
+    if celda == "E":
+        return True
+
+    if celda == ".":
+        return True
+
+    if celda == "T":
+        return True
+
+    if celda == "S":
+        return True
+
+    return False
+
+
+def obtener_nombre_direccion(indice):
+    """
+    Retorna el nombre de una direccion segun el orden obligatorio.
+    """
+
+    if indice == 0:
+        return "Arriba"
+
+    if indice == 1:
+        return "Derecha"
+
+    if indice == 2:
+        return "Abajo"
+
+    if indice == 3:
+        return "Izquierda"
+
+    return "Desconocida"
+
+
+def probar_utilidades_backtracking():
+    """
+    Funcion temporal para comprobar que las utilidades base funcionan.
+    Esta prueba no resuelve el laberinto todavia.
+    """
+
+    valido, mensaje = validar_mapa(mapa)
+
+    if not valido:
+        escribir_informacion(
+            "No se pueden probar las utilidades.\n"
+            + mensaje
+        )
+
+        messagebox.showerror(
+            "Mapa invalido",
+            mensaje
+        )
+        return
+
+    entrada = buscar_entrada(mapa)
+    total_tesoros = contar_tesoros_matriz(mapa)
+    copia = copiar_matriz(mapa)
+
+    mensaje_prueba = (
+        "Utilidades base del backtracking funcionando correctamente.\n"
+        "Entrada encontrada en fila "
+        + str(entrada[0])
+        + ", columna "
+        + str(entrada[1])
+        + ".\n"
+        "Tesoros totales en el mapa: "
+        + str(total_tesoros)
+        + ".\n"
+        "Copia del mapa creada correctamente: "
+        + str(len(copia))
+        + " filas x "
+        + str(len(copia[0]))
+        + " columnas.\n"
+        "Orden de movimiento preparado: Arriba, Derecha, Abajo, Izquierda."
+    )
+
+    escribir_informacion(mensaje_prueba)
+
+    messagebox.showinfo(
+        "Prueba de utilidades",
+        "Las utilidades base funcionan correctamente."
+    )
+
+# =========================================================
+# BUSQUEDA DEL PRIMER TESORO CON BACKTRACKING ANIMADO
+# =========================================================
+
+def buscar_primer_tesoro():
+    """
+    Ejecuta la busqueda del primer tesoro accesible usando backtracking recursivo.
+    El algoritmo no conoce la posicion previa del tesoro.
+    Detecta el tesoro solamente cuando llega a una celda T.
+    La visualizacion se realiza con animacion usando ventana.after().
+    """
+
+    global mapa
+
+    valido, mensaje = validar_mapa(mapa)
+
+    if not valido:
+        escribir_informacion(
+            "No se puede iniciar la busqueda.\n"
+            + mensaje
+        )
+
+        messagebox.showerror(
+            "Mapa invalido",
+            mensaje
+        )
+        return
+
+    limpiar_marcas_sin_mensaje()
+
+    mapa_original = copiar_matriz(mapa)
+    entrada = buscar_entrada(mapa)
+
+    if entrada is None:
+        escribir_informacion(
+            "No se puede iniciar la busqueda.\n"
+            "No se encontro entrada E."
+        )
+
+        messagebox.showerror(
+            "Busqueda",
+            "No se encontro entrada E."
+        )
+        return
+
+    estadisticas = {
+        "visitadas": 0,
+        "retrocesos": 0,
+        "tesoro_encontrado": None
+    }
+
+    ruta_actual = []
+    pasos_animacion = []
+
+    escribir_informacion(
+        "Busqueda iniciada.\n"
+        "Explorando con backtracking recursivo...\n"
+        "Orden: Arriba, Derecha, Abajo, Izquierda."
+    )
+
+    encontrado = backtracking_primer_tesoro(
+        entrada[0],
+        entrada[1],
+        ruta_actual,
+        estadisticas,
+        pasos_animacion
+    )
+
+    if encontrado:
+        agregar_pasos_ruta_final(
+            ruta_actual,
+            mapa_original,
+            pasos_animacion
+        )
+
+    mapa = copiar_matriz(mapa_original)
+    dibujar_mapa()
+
+    animar_pasos_busqueda(
+        pasos_animacion,
+        0,
+        mapa_original,
+        encontrado,
+        estadisticas
+    )
+
+
+def backtracking_primer_tesoro(fila, columna, ruta_actual, estadisticas, pasos_animacion):
+    """
+    Funcion recursiva de backtracking.
+    Intenta encontrar el primer tesoro accesible desde la posicion actual.
+    Orden de exploracion obligatorio:
+    arriba, derecha, abajo, izquierda.
+    """
+
+    if not posicion_dentro_del_mapa(mapa, fila, columna):
+        return False
+
+    if not es_celda_transitable(mapa, fila, columna):
+        return False
+
+    celda_actual = mapa[fila][columna]
+
+    ruta_actual.append([fila, columna])
+
+    if celda_actual == "T":
+        estadisticas["tesoro_encontrado"] = [fila, columna]
+        return True
+
+    if celda_actual != "E" and celda_actual != "S":
+        mapa[fila][columna] = "V"
+        estadisticas["visitadas"] = estadisticas["visitadas"] + 1
+        pasos_animacion.append(["V", fila, columna])
+
+    for indice in range(len(DIRECCIONES_MOVIMIENTO)):
+        movimiento = DIRECCIONES_MOVIMIENTO[indice]
+
+        nueva_fila = fila + movimiento[0]
+        nueva_columna = columna + movimiento[1]
+
+        if backtracking_primer_tesoro(
+            nueva_fila,
+            nueva_columna,
+            ruta_actual,
+            estadisticas,
+            pasos_animacion
+        ):
+            return True
+
+    ruta_actual.pop()
+
+    if celda_actual != "E" and celda_actual != "S":
+        mapa[fila][columna] = "R"
+        estadisticas["retrocesos"] = estadisticas["retrocesos"] + 1
+        pasos_animacion.append(["R", fila, columna])
+
+    return False
+
+
+def agregar_pasos_ruta_final(ruta_actual, mapa_original, pasos_animacion):
+    """
+    Agrega a la animacion las casillas que forman parte de la ruta final.
+    No reemplaza visualmente E, T ni S.
+    """
+
+    for posicion in ruta_actual:
+        fila = posicion[0]
+        columna = posicion[1]
+
+        simbolo_original = mapa_original[fila][columna]
+
+        if simbolo_original != "E" and simbolo_original != "T" and simbolo_original != "S":
+            pasos_animacion.append(["*", fila, columna])
+
+
+def animar_pasos_busqueda(pasos_animacion, indice, mapa_original, encontrado, estadisticas):
+    """
+    Muestra paso a paso la busqueda usando ventana.after().
+    Al terminar, registra el resultado para poder guardarlo.
+    """
+
+    if indice >= len(pasos_animacion):
+        finalizar_animacion_busqueda(encontrado, estadisticas, mapa_original)
+        return
+
+    paso = pasos_animacion[indice]
+
+    tipo_marca = paso[0]
+    fila = paso[1]
+    columna = paso[2]
+
+    aplicar_paso_animacion(tipo_marca, fila, columna, mapa_original)
+
+    dibujar_mapa()
+
+    ventana.after(
+        TIEMPO_ANIMACION,
+        lambda: animar_pasos_busqueda(
+            pasos_animacion,
+            indice + 1,
+            mapa_original,
+            encontrado,
+            estadisticas
+        )
+    )
+
+
+def aplicar_paso_animacion(tipo_marca, fila, columna, mapa_original):
+    """
+    Aplica una marca visual al mapa durante la animacion.
+    Conserva entrada, tesoros, paredes, trampas y salidas.
+    """
+
+    global mapa
+
+    simbolo_original = mapa_original[fila][columna]
+
+    if simbolo_original == "E":
+        return
+
+    if simbolo_original == "T":
+        return
+
+    if simbolo_original == "S":
+        return
+
+    if simbolo_original == "#":
+        return
+
+    if simbolo_original == "X":
+        return
+
+    mapa[fila][columna] = tipo_marca
+
+
+def finalizar_animacion_busqueda(encontrado, estadisticas, mapa_original):
+    """
+    Muestra el resumen final despues de terminar la animacion.
+    Tambien registra el resultado para poder guardarlo en archivo .txt.
+    """
+
+    if encontrado:
+        fila_tesoro = estadisticas["tesoro_encontrado"][0]
+        columna_tesoro = estadisticas["tesoro_encontrado"][1]
+
+        mensaje_final = (
+            "Busqueda finalizada: tesoro encontrado.\n"
+            "Posicion del tesoro: fila "
+            + str(fila_tesoro)
+            + ", columna "
+            + str(columna_tesoro)
+            + ".\n"
+            "Casillas visitadas: "
+            + str(estadisticas["visitadas"])
+            + ".\n"
+            "Retrocesos realizados: "
+            + str(estadisticas["retrocesos"])
+            + "."
+        )
+
+        resultado_reporte = (
+            "Se encontro un tesoro accesible desde la entrada en fila "
+            + str(fila_tesoro)
+            + ", columna "
+            + str(columna_tesoro)
+            + "."
+        )
+
+        registrar_ultimo_resultado_busqueda(
+            "Buscar primer tesoro",
+            mapa_original,
+            mapa,
+            contar_tesoros_matriz(mapa_original),
+            [[fila_tesoro, columna_tesoro]],
+            resultado_reporte
+        )
+
+        escribir_informacion(mensaje_final)
+
+        messagebox.showinfo(
+            "Tesoro encontrado",
+            "Se encontro un tesoro en fila "
+            + str(fila_tesoro)
+            + ", columna "
+            + str(columna_tesoro)
+            + "."
+        )
+
+    else:
+        mensaje_final = (
+            "Busqueda finalizada: no se encontro ningun tesoro accesible.\n"
+            "Casillas visitadas: "
+            + str(estadisticas["visitadas"])
+            + ".\n"
+            "Retrocesos realizados: "
+            + str(estadisticas["retrocesos"])
+            + "."
+        )
+
+        registrar_ultimo_resultado_busqueda(
+            "Buscar primer tesoro",
+            mapa_original,
+            mapa,
+            contar_tesoros_matriz(mapa_original),
+            [],
+            "No se encontro ningun tesoro accesible desde la entrada."
+        )
+
+        escribir_informacion(mensaje_final)
+
+        messagebox.showwarning(
+            "Tesoro no encontrado",
+            "No se encontro ningun tesoro accesible desde la entrada."
+        )
+
+
+def limpiar_marcas_sin_mensaje():
+    """
+    Limpia V, R y * sin mostrar ventanas emergentes.
+    Se usa internamente antes de iniciar una nueva busqueda.
+    """
+
+    global mapa
+
+    for fila in range(len(mapa)):
+        for columna in range(len(mapa[fila])):
+            if mapa[fila][columna] == "V" or mapa[fila][columna] == "R" or mapa[fila][columna] == "*":
+                mapa[fila][columna] = "."
+
+# =========================================================
+# BUSQUEDA DE TODOS LOS TESOROS CON BACKTRACKING ANIMADO
+# =========================================================
+
+def buscar_todos_los_tesoros():
+    """
+    Ejecuta una busqueda completa para encontrar todos los tesoros accesibles.
+    El algoritmo no conoce previamente las posiciones de los tesoros.
+    Los registra solamente cuando llega a una celda T durante la exploracion.
+    """
+
+    global mapa
+
+    valido, mensaje = validar_mapa(mapa)
+
+    if not valido:
+        escribir_informacion(
+            "No se puede iniciar la busqueda de todos los tesoros.\n"
+            + mensaje
+        )
+
+        messagebox.showerror(
+            "Mapa invalido",
+            mensaje
+        )
+        return
+
+    limpiar_marcas_sin_mensaje()
+
+    mapa_original = copiar_matriz(mapa)
+    entrada = buscar_entrada(mapa)
+    total_tesoros = contar_tesoros_matriz(mapa)
+
+    if entrada is None:
+        escribir_informacion(
+            "No se puede iniciar la busqueda.\n"
+            "No se encontro entrada E."
+        )
+
+        messagebox.showerror(
+            "Busqueda",
+            "No se encontro entrada E."
+        )
+        return
+
+    visitados = crear_matriz_visitados(len(mapa), len(mapa[0]))
+
+    estadisticas = {
+        "visitadas": 0,
+        "retrocesos": 0,
+        "total_tesoros": total_tesoros,
+        "tesoros_encontrados": [],
+        "rutas_encontradas": []
+    }
+
+    ruta_actual = []
+    pasos_animacion = []
+
+    escribir_informacion(
+        "Busqueda de todos los tesoros iniciada.\n"
+        "Explorando todos los caminos posibles con backtracking...\n"
+        "Orden: Arriba, Derecha, Abajo, Izquierda."
+    )
+
+    backtracking_todos_los_tesoros(
+        entrada[0],
+        entrada[1],
+        visitados,
+        ruta_actual,
+        estadisticas,
+        pasos_animacion
+    )
+
+    agregar_pasos_rutas_todos_los_tesoros(
+        estadisticas["rutas_encontradas"],
+        mapa_original,
+        pasos_animacion
+    )
+
+    mapa = copiar_matriz(mapa_original)
+    dibujar_mapa()
+
+    animar_pasos_busqueda_todos(
+        pasos_animacion,
+        0,
+        mapa_original,
+        estadisticas
+    )
+
+
+def crear_matriz_visitados(filas, columnas):
+    """
+    Crea una matriz booleana para controlar las celdas ya visitadas.
+    Esto evita ciclos infinitos sin depender solamente de cambiar simbolos del mapa.
+    """
+
+    visitados = []
+
+    for fila in range(filas):
+        nueva_fila = []
+
+        for columna in range(columnas):
+            nueva_fila.append(False)
+
+        visitados.append(nueva_fila)
+
+    return visitados
+
+
+def backtracking_todos_los_tesoros(fila, columna, visitados, ruta_actual, estadisticas, pasos_animacion):
+    """
+    Backtracking recursivo para explorar todos los caminos accesibles.
+    Continúa explorando aun despues de encontrar un tesoro.
+    """
+
+    if not posicion_dentro_del_mapa(mapa, fila, columna):
+        return
+
+    if not es_celda_transitable(mapa, fila, columna):
+        return
+
+    if visitados[fila][columna]:
+        return
+
+    visitados[fila][columna] = True
+
+    celda_actual = mapa[fila][columna]
+    ruta_actual.append([fila, columna])
+
+    if celda_actual == "T":
+        tesoro_ya_registrado = False
+
+        for tesoro in estadisticas["tesoros_encontrados"]:
+            if tesoro[0] == fila and tesoro[1] == columna:
+                tesoro_ya_registrado = True
+
+        if not tesoro_ya_registrado:
+            estadisticas["tesoros_encontrados"].append([fila, columna])
+            estadisticas["rutas_encontradas"].append(copiar_ruta(ruta_actual))
+
+    elif celda_actual != "E" and celda_actual != "S":
+        estadisticas["visitadas"] = estadisticas["visitadas"] + 1
+        pasos_animacion.append(["V", fila, columna])
+
+    for indice in range(len(DIRECCIONES_MOVIMIENTO)):
+        movimiento = DIRECCIONES_MOVIMIENTO[indice]
+
+        nueva_fila = fila + movimiento[0]
+        nueva_columna = columna + movimiento[1]
+
+        backtracking_todos_los_tesoros(
+            nueva_fila,
+            nueva_columna,
+            visitados,
+            ruta_actual,
+            estadisticas,
+            pasos_animacion
+        )
+
+    ruta_actual.pop()
+
+    if celda_actual != "E" and celda_actual != "T" and celda_actual != "S":
+        estadisticas["retrocesos"] = estadisticas["retrocesos"] + 1
+        pasos_animacion.append(["R", fila, columna])
+
+
+def copiar_ruta(ruta):
+    """
+    Crea una copia independiente de una ruta.
+    """
+
+    copia = []
+
+    for posicion in ruta:
+        copia.append([posicion[0], posicion[1]])
+
+    return copia
+
+
+def agregar_pasos_rutas_todos_los_tesoros(rutas_encontradas, mapa_original, pasos_animacion):
+    """
+    Agrega al final de la animacion las rutas hacia los tesoros encontrados.
+    Se agregan al final para que los retrocesos no borren visualmente la ruta final.
+    """
+
+    for ruta in rutas_encontradas:
+        for posicion in ruta:
+            fila = posicion[0]
+            columna = posicion[1]
+
+            simbolo_original = mapa_original[fila][columna]
+
+            if simbolo_original != "E" and simbolo_original != "T" and simbolo_original != "S":
+                pasos_animacion.append(["*", fila, columna])
+
+
+def animar_pasos_busqueda_todos(pasos_animacion, indice, mapa_original, estadisticas):
+    """
+    Anima la busqueda completa de todos los tesoros usando ventana.after().
+    """
+
+    if indice >= len(pasos_animacion):
+        finalizar_animacion_busqueda_todos(estadisticas, mapa_original)
+        return
+
+    paso = pasos_animacion[indice]
+
+    tipo_marca = paso[0]
+    fila = paso[1]
+    columna = paso[2]
+
+    aplicar_paso_animacion(tipo_marca, fila, columna, mapa_original)
+
+    dibujar_mapa()
+
+    ventana.after(
+        TIEMPO_ANIMACION,
+        lambda: animar_pasos_busqueda_todos(
+            pasos_animacion,
+            indice + 1,
+            mapa_original,
+            estadisticas
+        )
+    )
+
+
+def finalizar_animacion_busqueda_todos(estadisticas,mapa_original):
+    """
+    Muestra el resumen final de la busqueda de todos los tesoros.
+    """
+
+    total_tesoros = estadisticas["total_tesoros"]
+    encontrados = len(estadisticas["tesoros_encontrados"])
+
+    posiciones = obtener_texto_posiciones_tesoros(
+        estadisticas["tesoros_encontrados"]
+    )
+
+    if encontrados == total_tesoros:
+        resultado = "Todos los tesoros son accesibles desde la entrada."
+    else:
+        resultado = "Existe al menos un tesoro inaccesible."
+    
+    registrar_ultimo_resultado_busqueda(
+        "Buscar todos los tesoros",
+        mapa_original,
+        mapa,
+        total_tesoros,
+        estadisticas["tesoros_encontrados"],
+        resultado
+    )
+
+    mensaje_final = (
+        "Busqueda de todos los tesoros finalizada.\n"
+        "Tesoros totales: "
+        + str(total_tesoros)
+        + ".\n"
+        "Tesoros encontrados: "
+        + str(encontrados)
+        + ".\n"
+        + posiciones
+        + "\nCasillas visitadas: "
+        + str(estadisticas["visitadas"])
+        + ".\n"
+        "Retrocesos realizados: "
+        + str(estadisticas["retrocesos"])
+        + ".\n"
+        + resultado
+    )
+
+    escribir_informacion(mensaje_final)
+
+    if encontrados == 0:
+        messagebox.showwarning(
+            "Busqueda finalizada",
+            "No se encontro ningun tesoro accesible."
+        )
+
+    elif encontrados == total_tesoros:
+        messagebox.showinfo(
+            "Busqueda finalizada",
+            "Se encontraron todos los tesoros accesibles.\n\n"
+            "Tesoros encontrados: "
+            + str(encontrados)
+            + " de "
+            + str(total_tesoros)
+            + "."
+        )
+
+    else:
+        messagebox.showwarning(
+            "Busqueda finalizada",
+            "No todos los tesoros son accesibles.\n\n"
+            "Tesoros encontrados: "
+            + str(encontrados)
+            + " de "
+            + str(total_tesoros)
+            + "."
+        )
+
+
+def obtener_texto_posiciones_tesoros(tesoros_encontrados):
+    """
+    Construye un texto con las posiciones de los tesoros encontrados.
+    """
+
+    if len(tesoros_encontrados) == 0:
+        return "Posiciones de tesoros encontrados: ninguna."
+
+    texto = "Posiciones de tesoros encontrados:"
+
+    for indice in range(len(tesoros_encontrados)):
+        tesoro = tesoros_encontrados[indice]
+
+        texto = (
+            texto
+            + "\nTesoro "
+            + str(indice + 1)
+            + ": fila "
+            + str(tesoro[0])
+            + ", columna "
+            + str(tesoro[1])
+        )
+
+    return texto
+
+# =========================================================
+# GUARDADO DE RESULTADOS DE BUSQUEDA
+# =========================================================
+
+def registrar_ultimo_resultado_busqueda(
+    tipo_busqueda,
+    mapa_original,
+    mapa_final,
+    total_tesoros,
+    tesoros_encontrados,
+    resultado_final
+):
+    """
+    Guarda en memoria los datos de la ultima busqueda realizada.
+    Estos datos se usaran cuando el usuario presione Guardar resultado.
+    """
+
+    global ultimo_resultado_busqueda
+
+    ultimo_resultado_busqueda = {
+        "tipo_busqueda": tipo_busqueda,
+        "mapa_original": copiar_matriz(mapa_original),
+        "mapa_final": copiar_matriz(mapa_final),
+        "total_tesoros": total_tesoros,
+        "tesoros_encontrados": copiar_lista_posiciones(tesoros_encontrados),
+        "resultado_final": resultado_final,
+        "fecha_hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    }
+
+
+def copiar_lista_posiciones(lista_posiciones):
+    """
+    Crea una copia independiente de una lista de posiciones.
+    """
+
+    copia = []
+
+    for posicion in lista_posiciones:
+        copia.append([posicion[0], posicion[1]])
+
+    return copia
+
+
+def generar_texto_reporte_resultado():
+    """
+    Genera el contenido completo del reporte de busqueda.
+    """
+
+    if ultimo_resultado_busqueda is None:
+        return None
+
+    texto = ""
+
+    texto = texto + "EXPLORADORES DEL LABERINTO PERDIDO\n"
+    texto = texto + "REPORTE DE BUSQUEDA\n"
+    texto = texto + "====================================\n\n"
+
+    texto = texto + "Fecha y hora de generacion:\n"
+    texto = texto + ultimo_resultado_busqueda["fecha_hora"] + "\n\n"
+
+    texto = texto + "Tipo de busqueda:\n"
+    texto = texto + ultimo_resultado_busqueda["tipo_busqueda"] + "\n\n"
+
+    texto = texto + "Mapa original:\n"
+    texto = texto + convertir_mapa_a_texto(ultimo_resultado_busqueda["mapa_original"])
+    texto = texto + "\n"
+
+    texto = texto + "Mapa final despues de la busqueda:\n"
+    texto = texto + convertir_mapa_a_texto(ultimo_resultado_busqueda["mapa_final"])
+    texto = texto + "\n"
+
+    texto = texto + "Tesoros totales:\n"
+    texto = texto + str(ultimo_resultado_busqueda["total_tesoros"]) + "\n\n"
+
+    texto = texto + "Tesoros encontrados:\n"
+    texto = texto + str(len(ultimo_resultado_busqueda["tesoros_encontrados"])) + "\n\n"
+
+    texto = texto + "Posiciones de tesoros encontrados:\n"
+
+    if len(ultimo_resultado_busqueda["tesoros_encontrados"]) == 0:
+        texto = texto + "Ninguna.\n"
+    else:
+        for indice in range(len(ultimo_resultado_busqueda["tesoros_encontrados"])):
+            tesoro = ultimo_resultado_busqueda["tesoros_encontrados"][indice]
+
+            texto = (
+                texto
+                + "Tesoro "
+                + str(indice + 1)
+                + ": fila "
+                + str(tesoro[0])
+                + ", columna "
+                + str(tesoro[1])
+                + "\n"
+            )
+
+    texto = texto + "\nResultado:\n"
+    texto = texto + ultimo_resultado_busqueda["resultado_final"] + "\n"
+
+    return texto
+
+
+def guardar_resultado():
+    """
+    Guarda en un archivo .txt el resultado de la ultima busqueda realizada.
+    """
+
+    if ultimo_resultado_busqueda is None:
+        messagebox.showerror(
+            "Guardar resultado",
+            "No hay ningun resultado de busqueda para guardar.\n\n"
+            "Primero ejecute Buscar primer tesoro o Buscar todos los tesoros."
+        )
+
+        escribir_informacion(
+            "No se puede guardar resultado.\n"
+            "Primero debe ejecutar una busqueda."
+        )
+        return
+
+    ruta_archivo = filedialog.asksaveasfilename(
+        title="Guardar resultado de busqueda",
+        defaultextension=".txt",
+        filetypes=[
+            ("Archivos de texto", "*.txt"),
+            ("Todos los archivos", "*.*")
+        ]
+    )
+
+    if ruta_archivo == "":
+        escribir_informacion(
+            "Guardado de resultado cancelado.\n"
+            "No se selecciono ninguna ubicacion."
+        )
+        return
+
+    try:
+        texto_reporte = generar_texto_reporte_resultado()
+
+        archivo = open(ruta_archivo, "w", encoding="utf-8")
+        archivo.write(texto_reporte)
+        archivo.close()
+
+        escribir_informacion(
+            "Resultado guardado correctamente.\n"
+            "Archivo: "
+            + ruta_archivo
+        )
+
+        messagebox.showinfo(
+            "Resultado guardado",
+            "El resultado de la busqueda se guardo correctamente."
+        )
+
+    except Exception as error:
+        escribir_informacion(
+            "Error al guardar el resultado.\n"
+            + str(error)
+        )
+
+        messagebox.showerror(
+            "Error al guardar resultado",
+            "No se pudo guardar el resultado.\n\n"
+            + str(error)
+        )
+
 # =========================================================
 # ACCIONES TEMPORALES
 # =========================================================
