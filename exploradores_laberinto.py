@@ -1,21 +1,25 @@
-# Exploradores del Laberinto Perdido
-# Interfaz grafica base - version procedural ajustada
-# Lenguaje: Python
-# Interfaz: Tkinter
+#INSTITUTO TECNOLÓGICO DE COSTA RICA 
+#PROYECTO #2 TALLER DE PROGRAMACIÓN
+#Exploradores del Laberinto Perdido
+#Fabián Cambronero Núñez
+#Carné: 2026079420
 
+#Imports del proyecto 
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog, messagebox
 from datetime import datetime
 
-# =========================================================
-# CONSTANTES DE DISENO
-# =========================================================
+# -------------------------
+# CONSTANTES DE DISEÑO
+# -------------------------
 
+#Areas y tamaño de la celda
 AREA_MAPA = 620
 TAM_MAX_CELDA = 90
 TAM_MIN_CELDA = 20
 
+#Colores que utilizaremos 
 COLOR_FONDO = "#0b1120"
 COLOR_PANEL = "#111827"
 COLOR_PANEL_2 = "#1f2937"
@@ -36,6 +40,7 @@ COLOR_AMARILLO = "#facc15"
 COLOR_HOVER = "#f8fafc"
 COLOR_TEXTO_HOVER = "black"
 
+#Colores dependiendo lo que encuentre en la matriz 
 COLORES_CELDAS = {
     "E": "#16a34a",   # Entrada
     ".": "#d6c7a1",   # Camino
@@ -48,10 +53,12 @@ COLORES_CELDAS = {
     "*": "#fb923c",   # Ruta final
 }
 
+#Simbolos validos que utilizaremos
 SIMBOLOS_MAPA_BASE = ["E", ".", "#", "T", "X", "S"]
 SIMBOLOS_MARCAS = ["V", "R", "*"]
 SIMBOLOS_VALIDOS = SIMBOLOS_MAPA_BASE + SIMBOLOS_MARCAS
 
+#Dimensiones de la matriz
 MIN_FILAS = 5
 MIN_COLUMNAS = 5
 MAX_FILAS = 20
@@ -65,9 +72,10 @@ DIRECCIONES_MOVIMIENTO = [
 ]
 
 TIEMPO_ANIMACION = 50
-# =========================================================
+
+# -------------------
 # VARIABLES GLOBALES
-# =========================================================
+# -------------------
 
 ventana = None
 canvas_mapa = None
@@ -77,9 +85,10 @@ mapa = []
 tipo_celda_seleccionado = "."
 modo_edicion_activo = False
 ultimo_resultado_busqueda = None
-# =========================================================
-# MAPAS EN ARCHIVOS
-# =========================================================
+
+# ----------------------
+# MAPA PANTALLA INICIAL
+# ----------------------
 
 def crear_mapa_demo_20x20():
     filas = [
@@ -113,17 +122,17 @@ def crear_mapa_demo_20x20():
     return nueva_matriz
 
 
-
-# =========================================================
+# ------------------------
 # CREACION DE INTERFAZ
-# =========================================================
+# ------------------------
 
+#Crea la interfaz general
 def crear_interfaz():
     crear_encabezado()
     crear_menu_superior()
     crear_zona_principal()
 
-
+#Procedimiento para crear el encabezado
 def crear_encabezado():
     encabezado = tk.Frame(ventana, bg=COLOR_FONDO)
     encabezado.pack(fill="x", padx=16, pady=(8, 2))
@@ -137,16 +146,7 @@ def crear_encabezado():
     )
     titulo.pack(anchor="center")
 
-    subtitulo = tk.Label(
-        encabezado,
-        text="Matrices · Archivos · Tkinter · Backtracking recursivo",
-        font=("Arial", 10, "bold"),
-        bg=COLOR_FONDO,
-        fg=COLOR_TEXTO_SUAVE
-    )
-    subtitulo.pack(anchor="center", pady=(1, 4))
-
-
+#Procedimiento para crear el menu superior de botones
 def crear_menu_superior():
     contenedor = tk.Frame(ventana, bg=COLOR_FONDO)
     contenedor.pack(fill="x", padx=16, pady=(2, 6))
@@ -161,30 +161,27 @@ def crear_menu_superior():
     )
     menu.pack(anchor="center", fill="x")
 
+    #Llamadas para crear la botonera superior del programa 
     fila_1 = tk.Frame(menu, bg=COLOR_PANEL)
     fila_1.pack(anchor="center", pady=(7, 3))
 
     crear_boton_menu(fila_1, "Crear mapa", abrir_ventana_crear_mapa, COLOR_AZUL)
-    crear_boton_menu(fila_1, "Cargar mapa", cargar_mapa, COLOR_AZUL_2)
+    crear_boton_menu(fila_1, "Cargar mapa", cargar_mapa, COLOR_AZUL)
     crear_boton_menu(fila_1, "Guardar mapa", guardar_mapa, COLOR_AZUL)
-    crear_boton_menu(
-    fila_1,
-    "Editar mapa",
-    abrir_editor_mapa,
-    COLOR_AMARILLO,
-    color_texto="black"
-)
+    crear_boton_menu(fila_1, "Editar mapa", abrir_editor_mapa, COLOR_AMARILLO, color_texto="black")
 
     fila_2 = tk.Frame(menu, bg=COLOR_PANEL)
     fila_2.pack(anchor="center", pady=(3, 7))
 
     crear_boton_menu(fila_2, "Buscar primer tesoro", buscar_primer_tesoro, COLOR_VERDE, ancho=20)
-    crear_boton_menu(fila_2, "Buscar todos los tesoros", buscar_todos_los_tesoros, COLOR_VERDE_2, ancho=22)
+    crear_boton_menu(fila_2, "Buscar todos los tesoros", buscar_todos_los_tesoros, COLOR_VERDE, ancho=22)
     crear_boton_menu(fila_2, "Limpiar marcas", limpiar_marcas, COLOR_GRIS)
-    crear_boton_menu(fila_2, "Guardar resultado", guardar_resultado, COLOR_MORADO, ancho=18)
+    crear_boton_menu(fila_2, "Guardar resultado", guardar_resultado, COLOR_VERDE_2, ancho=18)
     crear_boton_menu(fila_2, "Salir", salir, COLOR_ROJO, ancho=10)
 
-
+#Función para crear botones
+#Entradas: El lugar donde se ubica, texto que contiene, comando que ejecuta, color
+#Salidas: Crea el boton 
 def crear_boton_menu(padre, texto, comando, color, ancho=16, color_texto="white"):
     boton = tk.Button(
         padre,
@@ -205,6 +202,8 @@ def crear_boton_menu(padre, texto, comando, color, ancho=16, color_texto="white"
 
     boton.pack(side="left", padx=4)
 
+    #EVENTOS DEL HOVER DEL MOUSE
+    #Cuando el mouse esta encima
     boton.bind(
         "<Enter>",
         lambda evento: boton.config(
@@ -213,6 +212,7 @@ def crear_boton_menu(padre, texto, comando, color, ancho=16, color_texto="white"
         )
     )
 
+    #Cuando el mouse esta afuera
     boton.bind(
         "<Leave>",
         lambda evento: boton.config(
@@ -221,7 +221,7 @@ def crear_boton_menu(padre, texto, comando, color, ancho=16, color_texto="white"
         )
     )
 
-
+#Crea la zona donde dibujaremos el mapa más adelante 
 def crear_zona_principal():
     global canvas_mapa
 
@@ -267,7 +267,9 @@ def crear_zona_principal():
 
     crear_area_informacion(panel_mapa)
 
-
+#Crea el area donde vamos a mostrar información respecto al programa
+#Entradas: donde se va a crear el area de información 
+#Salidas: Se crea el area de la información
 def crear_area_informacion(padre):
     global texto_informacion
 
@@ -283,10 +285,10 @@ def crear_area_informacion(padre):
 
     etiqueta = tk.Label(
         marco_info,
-        text="INFORMACION DEL SISTEMA",
+        text="INFORMACIÓN DEL SISTEMA",
         font=("Arial", 9, "bold"),
         bg=COLOR_PANEL_2,
-        fg=COLOR_DORADO
+        fg = "white"
     )
     etiqueta.pack(anchor="w", padx=9, pady=(5, 1))
 
@@ -308,10 +310,11 @@ def crear_area_informacion(padre):
     texto_informacion.config(state="disabled")
 
 
-# =========================================================
+# -----------------
 # DIBUJO DEL MAPA
-# =========================================================
+# -----------------
 
+#Procedimiento principal para diujar el mapa
 def dibujar_mapa():
     canvas_mapa.delete("all")
     dibujar_fondo_canvas()
@@ -344,7 +347,6 @@ def dibujar_mapa():
         outline=""
     )
 
-    # Marco dorado tipo ruina antigua
     canvas_mapa.create_rectangle(
         inicio_x - 12,
         inicio_y - 12,
@@ -363,7 +365,7 @@ def dibujar_mapa():
         outline="#92400e",
         width=3
     )
-
+    #Recorre la matriz y va dibujando cada uno llamando a la función de dibujar_celda
     for fila in range(filas):
         for col in range(columnas):
             simbolo = mapa[fila][col]
@@ -375,15 +377,7 @@ def dibujar_mapa():
 
             dibujar_celda(x1, y1, x2, y2, simbolo, tam_celda)
 
-    canvas_mapa.create_text(
-        AREA_MAPA // 2,
-        AREA_MAPA - 14,
-        text="Vista actual: " + str(filas) + " x " + str(columnas) + " | Celda: " + str(tam_celda) + "px",
-        font=("Arial", 9, "bold"),
-        fill="#d6d3d1"
-    )
-
-
+#Prepara el fondo para dibujar el mapa poniendo objetos visuales
 def dibujar_fondo_canvas():
     canvas_mapa.create_rectangle(
         0,
@@ -429,15 +423,9 @@ def dibujar_fondo_canvas():
             outline=""
         )
 
-    canvas_mapa.create_text(
-        AREA_MAPA // 2,
-        20,
-        text="RUINAS ANTIGUAS - MAPA DE EXPLORACION",
-        font=("Arial", 10, "bold"),
-        fill="#a16207"
-    )
-
-
+#Función que dibujo el contenido de cada celda
+#Entradas: Donde debe dibujarlo, que simbolo debe dibujar y l tamaño respectivo 
+#Salidas: El dibujo en el canvas
 def dibujar_celda(x1, y1, x2, y2, simbolo, tam):
     # Fondo base de cada celda
     canvas_mapa.create_rectangle(
@@ -484,7 +472,9 @@ def dibujar_celda(x1, y1, x2, y2, simbolo, tam):
         dibujar_camino(x1, y1, x2, y2, tam)
         dibujar_ruta_final(x1, y1, x2, y2, tam)
 
-
+#Dibuja el camino normal del canvas
+#Entradas: Ubicacion y tamaño 
+#Salidas: el dibujo en el canvas
 def dibujar_camino(x1, y1, x2, y2, tam):
     # Piso de piedra / arena
     canvas_mapa.create_rectangle(
@@ -506,46 +496,9 @@ def dibujar_camino(x1, y1, x2, y2, tam):
         outline=""
     )
 
-    # Textura de losas
-    if tam >= 24:
-        canvas_mapa.create_line(
-            x1 + 4,
-            y1 + tam * 0.62,
-            x2 - 5,
-            y1 + tam * 0.62,
-            fill="#a89568",
-            width=1
-        )
-
-        canvas_mapa.create_line(
-            x1 + tam * 0.36,
-            y1 + 5,
-            x1 + tam * 0.36,
-            y2 - 5,
-            fill="#a89568",
-            width=1
-        )
-
-        # Pequeñas grietas
-        canvas_mapa.create_line(
-            x1 + tam * 0.60,
-            y1 + tam * 0.20,
-            x1 + tam * 0.75,
-            y1 + tam * 0.32,
-            fill="#8a7b58",
-            width=1
-        )
-
-        canvas_mapa.create_line(
-            x1 + tam * 0.20,
-            y1 + tam * 0.78,
-            x1 + tam * 0.34,
-            y1 + tam * 0.68,
-            fill="#8a7b58",
-            width=1
-        )
-
-
+#Dibuja las paredes del laberinto 
+#Entradas: Las coordenadas y el tamaño donde debe dibujarse
+#Salidas: el dibujo en el canvas
 def dibujar_pared(x1, y1, x2, y2, tam):
     # Bloque oscuro principal
     canvas_mapa.create_rectangle(
@@ -578,39 +531,11 @@ def dibujar_pared(x1, y1, x2, y2, tam):
         outline=""
     )
 
-    if tam >= 24:
-        # Separaciones tipo ladrillo
-        canvas_mapa.create_line(
-            x1 + 4,
-            y1 + tam * 0.52,
-            x2 - 4,
-            y1 + tam * 0.52,
-            fill="#111827",
-            width=1
-        )
+        
 
-        canvas_mapa.create_line(
-            x1 + tam * 0.50,
-            y1 + 4,
-            x1 + tam * 0.50,
-            y2 - 4,
-            fill="#111827",
-            width=1
-        )
-
-        # Grieta
-        canvas_mapa.create_line(
-            x1 + tam * 0.20,
-            y1 + tam * 0.18,
-            x1 + tam * 0.36,
-            y1 + tam * 0.34,
-            x1 + tam * 0.28,
-            y1 + tam * 0.52,
-            fill="#020617",
-            width=1
-        )
-
-
+#Dibuja la entrada del laberinto 
+#Entradas: Las coordenadas y el tamaño donde debe dibujarse
+#Salidas: el dibujo en el canvas
 def dibujar_entrada(x1, y1, x2, y2, tam):
     # Portal verde
     canvas_mapa.create_rectangle(
@@ -618,20 +543,8 @@ def dibujar_entrada(x1, y1, x2, y2, tam):
         y1 + 4,
         x2 - 4,
         y2 - 4,
-        fill="#052e16",
-        outline="#86efac",
-        width=2
-    )
-
-    canvas_mapa.create_arc(
-        x1 + 7,
-        y1 + 5,
-        x2 - 7,
-        y2 + tam * 0.60,
-        start=0,
-        extent=180,
-        fill="#14532d",
-        outline="#bbf7d0",
+        fill="#083819",
+        outline="#06b850",
         width=2
     )
 
@@ -639,67 +552,69 @@ def dibujar_entrada(x1, y1, x2, y2, tam):
         (x1 + x2) / 2,
         (y1 + y2) / 2 + tam * 0.06,
         text="E",
-        fill="#22c55e",
+        fill="#06b850",
         font=("Arial", max(10, int(tam * 0.52)), "bold")
     )
 
-
+#Dibuja el tesoro del laberinto 
+#Entradas: Las coordenadas y el tamaño donde debe dibujarse
+#Salidas: el dibujo en el canvas
 def dibujar_tesoro(x1, y1, x2, y2, tam):
-    # Sombra
-    canvas_mapa.create_oval(
-        x1 + tam * 0.18,
-        y2 - tam * 0.20,
-        x2 - tam * 0.18,
-        y2 - tam * 0.08,
-        fill="#78350f",
-        outline=""
-    )
-
-    # Cuerpo del cofre
+    # Cofre cuadrado base
     canvas_mapa.create_rectangle(
-        x1 + tam * 0.18,
-        y1 + tam * 0.45,
-        x2 - tam * 0.18,
+        x1 + tam * 0.22,
+        y1 + tam * 0.28,
+        x2 - tam * 0.22,
         y2 - tam * 0.18,
-        fill="#92400e",
-        outline="#451a03",
+        fill="#8b4513",
+        outline="#3b1f0f",
         width=2
     )
 
-    # Tapa
-    canvas_mapa.create_arc(
-        x1 + tam * 0.18,
-        y1 + tam * 0.18,
-        x2 - tam * 0.18,
-        y2 - tam * 0.22,
-        start=0,
-        extent=180,
+    # Parte superior dorada
+    canvas_mapa.create_rectangle(
+        x1 + tam * 0.22,
+        y1 + tam * 0.28,
+        x2 - tam * 0.22,
+        y1 + tam * 0.44,
         fill="#facc15",
-        outline="#78350f",
+        outline="#3b1f0f",
         width=2
     )
 
-    # Brillo
+    # Línea divisoria entre tapa y cuerpo
+    canvas_mapa.create_line(
+        x1 + tam * 0.22,
+        y1 + tam * 0.44,
+        x2 - tam * 0.22,
+        y1 + tam * 0.44,
+        fill="#3b1f0f",
+        width=2
+    )
+
+    # Franja vertical dorada
     canvas_mapa.create_rectangle(
-        x1 + tam * 0.43,
-        y1 + tam * 0.25,
-        x1 + tam * 0.57,
+        x1 + tam * 0.46,
+        y1 + tam * 0.28,
+        x1 + tam * 0.54,
         y2 - tam * 0.18,
-        fill="#fde68a",
+        fill="#facc15",
         outline="#92400e"
     )
 
     # Cerradura
     canvas_mapa.create_rectangle(
         x1 + tam * 0.43,
-        y1 + tam * 0.58,
+        y1 + tam * 0.54,
         x1 + tam * 0.57,
-        y1 + tam * 0.72,
-        fill="#111827",
-        outline="#030712"
+        y1 + tam * 0.70,
+        fill="#50270a",
+        outline="#50270a"
     )
 
-
+#Dibuja las trampas del mapa
+#Entradas: Las coordenadas y el tamaño donde debe dibujarse
+#Salidas: el dibujo en el canvas
 def dibujar_trampa(x1, y1, x2, y2, tam):
     # Base roja oscura
     canvas_mapa.create_rectangle(
@@ -746,26 +661,9 @@ def dibujar_trampa(x1, y1, x2, y2, tam):
             outline="#7f1d1d"
         )
 
-        canvas_mapa.create_polygon(
-            p2 - tam * 0.05,
-            y1 + tam * 0.22,
-            p2,
-            y1 + tam * 0.18,
-            p2 + tam * 0.05,
-            y1 + tam * 0.22,
-            fill="#fee2e2",
-            outline=""
-        )
-
-    canvas_mapa.create_text(
-        (x1 + x2) / 2,
-        y1 + tam * 0.72,
-        text="!",
-        fill="white",
-        font=("Arial", max(7, int(tam * 0.32)), "bold")
-    )
-
-
+#Dibuja la salida del laberinto
+#Entradas: Las coordenadas y el tamaño donde debe dibujarse
+#Salidas: el dibujo en el canvas
 def dibujar_salida(x1, y1, x2, y2, tam):
     # Portal azul de salida
     canvas_mapa.create_rectangle(
@@ -774,17 +672,7 @@ def dibujar_salida(x1, y1, x2, y2, tam):
         x2 - 4,
         y2 - 4,
         fill="#172554",
-        outline="#bfdbfe",
-        width=2
-    )
-
-    canvas_mapa.create_oval(
-        x1 + tam * 0.22,
-        y1 + tam * 0.18,
-        x2 - tam * 0.22,
-        y2 - tam * 0.18,
-        fill="#2563eb",
-        outline="#93c5fd",
+        outline="#6d7f96",
         width=2
     )
 
@@ -792,11 +680,13 @@ def dibujar_salida(x1, y1, x2, y2, tam):
         (x1 + x2) / 2,
         (y1 + y2) / 2,
         text="S",
-        fill="white",
+        fill="#92a8c5",
         font=("Arial", max(10, int(tam * 0.48)), "bold")
     )
 
-
+#Dibuja la casilla visitada
+#Entradas: Las coordenadas y el tamaño donde debe dibujarse
+#Salidas: el dibujo en el canvas
 def dibujar_visitado(x1, y1, x2, y2, tam):
     canvas_mapa.create_rectangle(
         x1 + 5,
@@ -816,7 +706,9 @@ def dibujar_visitado(x1, y1, x2, y2, tam):
         font=("Arial", max(8, int(tam * 0.38)), "bold")
     )
 
-
+#Dibuja la casilla retroceso
+#Entradas: Las coordenadas y el tamaño donde debe dibujarse
+#Salidas: el dibujo en el canvas
 def dibujar_retroceso(x1, y1, x2, y2, tam):
     canvas_mapa.create_rectangle(
         x1 + 5,
@@ -836,7 +728,9 @@ def dibujar_retroceso(x1, y1, x2, y2, tam):
         font=("Arial", max(8, int(tam * 0.38)), "bold")
     )
 
-
+#Dibuja la casilla de ruta final
+#Entradas: Las coordenadas y el tamaño donde debe dibujarse
+#Salidas: el dibujo en el canvas
 def dibujar_ruta_final(x1, y1, x2, y2, tam):
     canvas_mapa.create_rectangle(
         x1 + 5,
@@ -856,7 +750,7 @@ def dibujar_ruta_final(x1, y1, x2, y2, tam):
         font=("Arial", max(8, int(tam * 0.38)), "bold")
     )
 
-
+#Función para calcular el tamaño de una celda
 def calcular_tamano_celda(filas, columnas):
     mayor_dimension = max(filas, columnas)
     tam = AREA_MAPA // mayor_dimension
@@ -870,10 +764,12 @@ def calcular_tamano_celda(filas, columnas):
     return tam
 
 
-# =========================================================
+# ---------------------
 # AREA DE INFORMACION
-# =========================================================
-
+# ---------------------
+#Función para escribir un mensaje
+#Entradas: el mensaje 
+#Salidas: el texto en pantalla
 def escribir_informacion(mensaje, limpiar=True):
     texto_informacion.config(state="normal")
 
@@ -883,14 +779,16 @@ def escribir_informacion(mensaje, limpiar=True):
     texto_informacion.insert("end", mensaje)
     texto_informacion.config(state="disabled")
 
-
+#Función para agregar texto al final
+#Entradas: el mensaje 
+#Salidas: el texto en pantalla
 def agregar_informacion(mensaje):
     texto_informacion.config(state="normal")
     texto_informacion.insert("end", "\n" + mensaje)
     texto_informacion.see("end")
     texto_informacion.config(state="disabled")
 
-
+#Procedimiento para indicar el mensaje inicial de la caja de texto
 def mostrar_informacion_inicial():
     filas = len(mapa)
     columnas = 0
@@ -899,13 +797,13 @@ def mostrar_informacion_inicial():
         columnas = len(mapa[0])
 
     mensaje = (
-        "Aqui se mostraran mensajes como: mapa cargado, busqueda iniciada, "
+        "Aqui se mostraran mensajes para informar sobre el estado del videojuego "
 
     )
 
     escribir_informacion(mensaje)
 
-
+#Cuenta la cantidad de simbolos que hay en el mapa
 def contar_simbolo(simbolo):
     cantidad = 0
 
@@ -916,15 +814,10 @@ def contar_simbolo(simbolo):
 
     return cantidad
 
+#Función para validar el mapa de juego
+#Entradas: Matriz del mapa
+#Salidas: Booleano y mensaje dependiendo el resultado
 def validar_mapa(matriz):
-    """
-    Valida que una matriz cumpla las reglas principales del proyecto.
-    Retorna:
-    - True si el mapa es valido.
-    - False si el mapa es invalido.
-    - Un mensaje explicando el resultado.
-    """
-
     if matriz == []:
         return False, "Error: no se puede resolver un mapa vacio."
 
@@ -987,7 +880,7 @@ def validar_mapa(matriz):
 
     return True, "Mapa valido."
 
-
+#Mostrar mensajes cuando validamos el mapa
 def mostrar_validacion_mapa():
     valido, mensaje = validar_mapa(mapa)
 
@@ -997,13 +890,9 @@ def mostrar_validacion_mapa():
         messagebox.showinfo("Validacion del mapa", mensaje)
     else:
         messagebox.showerror("Validacion del mapa", mensaje)
-        
-def abrir_ventana_crear_mapa():
-    """
-    Abre una ventana secundaria para crear un mapa nuevo.
-    El usuario indica filas y columnas.
-    """
 
+#Ventana para crear mapa
+def abrir_ventana_crear_mapa():
     ventana_crear = tk.Toplevel(ventana)
     ventana_crear.title("Crear mapa nuevo")
     ventana_crear.geometry("360x260")
@@ -1068,7 +957,7 @@ def abrir_ventana_crear_mapa():
 
     entrada_filas.insert(0, "10")
     entrada_columnas.insert(0, "10")
-
+    #Confirmación de la creación del mapa
     def confirmar_creacion():
         global mapa
 
@@ -1162,12 +1051,8 @@ def abrir_ventana_crear_mapa():
     )
     boton_cancelar.pack(side="left", padx=8)     
 
+#Procedimiento para abrir el editor del mapa
 def abrir_editor_mapa():
-    """
-    Abre una ventana de herramientas para editar el mapa visualmente.
-    El usuario selecciona un tipo de celda y luego hace clic en el canvas.
-    """
-
     global modo_edicion_activo
     global tipo_celda_seleccionado
 
@@ -1188,11 +1073,7 @@ def abrir_editor_mapa():
     ventana_editor.geometry("400x360")
     ventana_editor.resizable(False, False)
     ventana_editor.configure(bg=COLOR_FONDO)
-
-    # IMPORTANTE:
-    # No usar grab_set(), porque necesitamos poder hacer clic en el canvas principal.
-    # ventana_editor.grab_set()
-
+    #Procedimiento para cerrar el editor de mapas
     def cerrar_editor():
         global modo_edicion_activo
 
@@ -1233,12 +1114,12 @@ def abrir_editor_mapa():
     )
     marco_herramientas.pack(padx=16, pady=8, fill="both", expand=True)
 
-    crear_boton_herramienta(marco_herramientas, "Entrada E", "E", 0, 0, COLOR_VERDE)
-    crear_boton_herramienta(marco_herramientas, "Camino .", ".", 0, 1, "#d6c7a1", "black")
-    crear_boton_herramienta(marco_herramientas, "Pared #", "#", 1, 0, COLOR_GRIS)
-    crear_boton_herramienta(marco_herramientas, "Tesoro T", "T", 1, 1, COLOR_AMARILLO, "black")
-    crear_boton_herramienta(marco_herramientas, "Trampa X", "X", 2, 0, COLOR_ROJO)
-    crear_boton_herramienta(marco_herramientas, "Salida S", "S", 2, 1, COLOR_AZUL)
+    crear_boton_herramienta(marco_herramientas, "Entrada", "E", 0, 0, COLOR_VERDE)
+    crear_boton_herramienta(marco_herramientas, "Camino", ".", 0, 1, "#d6c7a1", "black")
+    crear_boton_herramienta(marco_herramientas, "Pared", "#", 1, 0, COLOR_GRIS)
+    crear_boton_herramienta(marco_herramientas, "Tesoro", "T", 1, 1, COLOR_AMARILLO, "black")
+    crear_boton_herramienta(marco_herramientas, "Trampa", "X", 2, 0, COLOR_ROJO)
+    crear_boton_herramienta(marco_herramientas, "Salida", "S", 2, 1, COLOR_AZUL)
 
     boton_cerrar = tk.Button(
         ventana_editor,
@@ -1260,10 +1141,9 @@ def abrir_editor_mapa():
         "Herramienta actual: Camino .\n"
         "Seleccione una herramienta y haga clic sobre una celda del mapa."
     )
+#Función para crear los botones de herramientas 
+#Entradas: donde va ubicado, el texto, el simbolo o valor, la fila, la columna, el color
 def crear_boton_herramienta(padre, texto, simbolo, fila, columna, color, color_texto="white"):
-    """
-    Crea un boton para seleccionar el tipo de celda que se colocara en el mapa.
-    """
 
     boton = tk.Button(
         padre,
@@ -1284,11 +1164,10 @@ def crear_boton_herramienta(padre, texto, simbolo, fila, columna, color, color_t
 
     boton.grid(row=fila, column=columna, padx=12, pady=12)
 
-
+#Guarda el simbolo que el usuario desea colocar en el mapa
+#Entradas: el simbolo
+#Salidas: lo guarda para utilizarlo cuando da click en el mapa
 def seleccionar_tipo_celda(simbolo):
-    """
-    Guarda el simbolo que el usuario quiere colocar en el mapa.
-    """
 
     global tipo_celda_seleccionado
 
@@ -1303,12 +1182,10 @@ def seleccionar_tipo_celda(simbolo):
         "Ahora haga clic sobre una celda del mapa."
     )
 
-
+#Función para obtener el nombre de algún simbolo del mapa
+#Entradas: Valor del simbolo 
+#Salidas: String con el nombre que representa ese simbolo
 def obtener_nombre_simbolo(simbolo):
-    """
-    Retorna el nombre descriptivo de un simbolo del mapa.
-    """
-
     if simbolo == "E":
         return "Entrada"
 
@@ -1329,11 +1206,10 @@ def obtener_nombre_simbolo(simbolo):
 
     return "Desconocido"
 
-
+#Función que detecta el click sobre el mapa y lo edita
+#Entradas: el evento 
+#Salidas: la modificación en el mapa
 def editar_celda_canvas(evento):
-    """
-    Detecta el clic sobre el canvas y modifica la celda correspondiente.
-    """
 
     if not modo_edicion_activo:
         return
@@ -1352,12 +1228,10 @@ def editar_celda_canvas(evento):
 
     colocar_celda(fila, columna)
 
-
+#Devuelve la celda donde le dimos click
+#Entradas: Los pixeles donde se dio el click
+#Salidas: las coordenadas de la matriz
 def obtener_celda_por_click(x, y):
-    """
-    Convierte coordenadas del canvas a posicion de matriz.
-    Retorna [fila, columna] o None si el clic fue fuera del mapa.
-    """
 
     filas = len(mapa)
 
@@ -1391,13 +1265,10 @@ def obtener_celda_por_click(x, y):
 
     return [fila, columna]
 
-
+#Coloca el valor que deseamos sobre donde dimos click
+#Entradas: la fila y la columa
+#salidas: coloca el simbolo en el mapa
 def colocar_celda(fila, columna):
-    """
-    Coloca el simbolo seleccionado en la celda indicada.
-    Si se coloca una entrada E, elimina la entrada anterior para cumplir la regla de entrada unica.
-    """
-
     global mapa
 
     simbolo = tipo_celda_seleccionado
@@ -1422,106 +1293,15 @@ def colocar_celda(fila, columna):
         + ")"
     )
 
-
+#Procedimiento para eliminar una E del mapa si se van a colocar 2 
 def eliminar_entrada_existente():
-    """
-    Elimina cualquier entrada E anterior antes de colocar una nueva.
-    Esto asegura que el mapa tenga como maximo una entrada.
-    """
-
     for fila in range(len(mapa)):
         for columna in range(len(mapa[fila])):
             if mapa[fila][columna] == "E":
                 mapa[fila][columna] = "."
 
-def obtener_celda_por_click(x, y):
-    """
-    Convierte coordenadas del canvas a posicion de matriz.
-    Retorna [fila, columna] o None si el clic fue fuera del mapa.
-    """
-
-    filas = len(mapa)
-
-    if filas == 0:
-        return None
-
-    columnas = len(mapa[0])
-
-    if columnas == 0:
-        return None
-
-    tam_celda = calcular_tamano_celda(filas, columnas)
-
-    ancho_mapa = columnas * tam_celda
-    alto_mapa = filas * tam_celda
-
-    inicio_x = (AREA_MAPA - ancho_mapa) // 2
-    inicio_y = (AREA_MAPA - alto_mapa) // 2
-
-    fin_x = inicio_x + ancho_mapa
-    fin_y = inicio_y + alto_mapa
-
-    if x < inicio_x or x >= fin_x:
-        return None
-
-    if y < inicio_y or y >= fin_y:
-        return None
-
-    columna = (x - inicio_x) // tam_celda
-    fila = (y - inicio_y) // tam_celda
-
-    return [fila, columna]
-
-
-def colocar_celda(fila, columna):
-    """
-    Coloca el simbolo seleccionado en la celda indicada.
-    Si se coloca una entrada E, elimina la entrada anterior para cumplir la regla de entrada unica.
-    """
-
-    global mapa
-
-    simbolo = tipo_celda_seleccionado
-
-    if simbolo == "E":
-        eliminar_entrada_existente()
-
-    mapa[fila][columna] = simbolo
-
-    dibujar_mapa()
-
-    escribir_informacion(
-        "Celda modificada correctamente.\n"
-        "Fila: "
-        + str(fila)
-        + " | Columna: "
-        + str(columna)
-        + "\nNuevo valor: "
-        + obtener_nombre_simbolo(simbolo)
-        + " ("
-        + simbolo
-        + ")"
-    )
-
-
-def eliminar_entrada_existente():
-    """
-    Elimina cualquier entrada E anterior antes de colocar una nueva.
-    Esto asegura que el mapa tenga como maximo una entrada.
-    """
-
-    for fila in range(len(mapa)):
-        for columna in range(len(mapa[fila])):
-            if mapa[fila][columna] == "E":
-                mapa[fila][columna] = "."
-
-
+#Permite cargar mapa desde un archivo txt
 def cargar_mapa():
-    """
-    Permite cargar un mapa desde un archivo .txt.
-    Cada linea del archivo representa una fila del mapa.
-    Cada caracter representa una celda.
-    """
 
     global mapa
 
@@ -1600,17 +1380,15 @@ def cargar_mapa():
             "No se pudo cargar el archivo.\n\n"
             + str(error)
         )    
-# =========================================================
+
+
+# -----------------
 # GUARDADO DE MAPAS
-# =========================================================
-
+# -----------------
+#Limpia el mapa antes de guardarlo
+#Entradas: Matriz con el mapa
+#Salidas: Mapa limpio
 def limpiar_mapa_para_guardar(matriz):
-    """
-    Crea una copia limpia del mapa para guardarlo como mapa base.
-    Las marcas de busqueda V, R y * se convierten en camino libre.
-    No modifica el mapa original que esta en pantalla.
-    """
-
     mapa_limpio = []
 
     for fila in matriz:
@@ -1626,13 +1404,10 @@ def limpiar_mapa_para_guardar(matriz):
 
     return mapa_limpio
 
-
+#Función que convierte la matriz en texto 
+#Entradas: La matriz del mapa
+#Salidas: el texto listo para guardar 
 def convertir_mapa_a_texto(matriz):
-    """
-    Convierte una matriz de caracteres en texto con formato de archivo .txt.
-    Cada fila de la matriz se convierte en una linea.
-    """
-
     texto = ""
 
     for fila in matriz:
@@ -1645,12 +1420,8 @@ def convertir_mapa_a_texto(matriz):
 
     return texto
 
-
+#Procedimiento que guarda el mapa actual en un archivo txt
 def guardar_mapa():
-    """
-    Guarda el mapa actual en un archivo .txt.
-    El archivo se guarda limpio, sin marcas V, R ni *.
-    """
 
     if mapa == []:
         messagebox.showerror(
@@ -1722,9 +1493,11 @@ def guardar_mapa():
             "No se pudo guardar el mapa.\n\n"
             + str(error)
         )
-# =========================================================
+
+
+# -------------------
 # LIMPIEZA DE MARCAS
-# =========================================================
+# -------------------
 
 def limpiar_marcas():
     """
