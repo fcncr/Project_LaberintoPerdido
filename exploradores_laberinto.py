@@ -1499,13 +1499,8 @@ def guardar_mapa():
 # LIMPIEZA DE MARCAS
 # -------------------
 
+#Procedimiento para limpiar las marcas del mapa
 def limpiar_marcas():
-    """
-    Limpia las marcas generadas por el algoritmo de busqueda.
-    Convierte V, R y * en caminos libres.
-    No altera entrada, tesoros, paredes, trampas ni salidas.
-    """
-
     global mapa
 
     if mapa == []:
@@ -1544,9 +1539,9 @@ def limpiar_marcas():
             "Las marcas de busqueda fueron eliminadas correctamente."
         )
 
-# =========================================================
+# -----------------------------------
 # UTILIDADES BASE PARA BACKTRACKING
-# =========================================================
+# -----------------------------------
 
 def buscar_entrada(matriz):
     """
