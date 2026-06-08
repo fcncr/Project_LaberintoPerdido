@@ -80,6 +80,8 @@ TIEMPO_ANIMACION = 50
 ventana = None
 canvas_mapa = None
 texto_informacion = None
+canvas_scroll = None
+frame_principal = None
 mapa = []
 
 tipo_celda_seleccionado = "."
@@ -125,6 +127,46 @@ def crear_mapa_demo_20x20():
 # ------------------------
 # CREACION DE INTERFAZ
 # ------------------------
+#Procedimiento para el scroll
+def crear_contenedor_scroll():
+    global canvas_scroll
+    global frame_principal
+
+    contenedor = tk.Frame(ventana, bg=COLOR_FONDO)
+    contenedor.pack(fill="both", expand=True)
+
+    canvas_scroll = tk.Canvas(
+        contenedor,
+        bg=COLOR_FONDO,
+        highlightthickness=0
+    )
+    canvas_scroll.pack(side="left", fill="both", expand=True)
+
+    barra_vertical = tk.Scrollbar(
+        contenedor,
+        orient="vertical",
+        command=canvas_scroll.yview
+    )
+    barra_vertical.pack(side="right", fill="y")
+
+    canvas_scroll.configure(yscrollcommand=barra_vertical.set)
+
+    frame_principal = tk.Frame(canvas_scroll, bg=COLOR_FONDO)
+
+    ventana_interna = canvas_scroll.create_window(
+        (0, 0),
+        window=frame_principal,
+        anchor="nw"
+    )
+
+    def actualizar_scroll(evento):
+        canvas_scroll.configure(scrollregion=canvas_scroll.bbox("all"))
+
+    def ajustar_ancho(evento):
+        canvas_scroll.itemconfig(ventana_interna, width=evento.width)
+
+    frame_principal.bind("<Configure>", actualizar_scroll)
+    canvas_scroll.bind("<Configure>", ajustar_ancho)
 
 #Crea la interfaz general
 def crear_interfaz():
@@ -134,7 +176,7 @@ def crear_interfaz():
 
 #Procedimiento para crear el encabezado
 def crear_encabezado():
-    encabezado = tk.Frame(ventana, bg=COLOR_FONDO)
+    encabezado = tk.Frame(frame_principal, bg=COLOR_FONDO)
     encabezado.pack(fill="x", padx=16, pady=(8, 2))
 
     titulo = tk.Label(
@@ -148,7 +190,7 @@ def crear_encabezado():
 
 #Procedimiento para crear el menu superior de botones
 def crear_menu_superior():
-    contenedor = tk.Frame(ventana, bg=COLOR_FONDO)
+    contenedor = tk.Frame(frame_principal, bg=COLOR_FONDO)
     contenedor.pack(fill="x", padx=16, pady=(2, 6))
 
     menu = tk.Frame(
@@ -225,7 +267,7 @@ def crear_boton_menu(padre, texto, comando, color, ancho=16, color_texto="white"
 def crear_zona_principal():
     global canvas_mapa
 
-    zona = tk.Frame(ventana, bg=COLOR_FONDO)
+    zona = tk.Frame(frame_principal, bg=COLOR_FONDO)
     zona.pack(fill="both", expand=True, padx=16, pady=(2, 10))
 
     panel_mapa = tk.Frame(
@@ -1542,13 +1584,10 @@ def limpiar_marcas():
 # -----------------------------------
 # UTILIDADES BASE PARA BACKTRACKING
 # -----------------------------------
-
+#Busca la entrada a la cueva
+#Entradas: El mapa en forma de matriz
+#Salidas: Retorna la coordenada donde encuentra la salida o none en otro caso 
 def buscar_entrada(matriz):
-    """
-    Busca la posicion de la entrada E dentro del mapa.
-    Retorna [fila, columna] si la encuentra.
-    Retorna None si no existe entrada.
-    """
 
     for fila in range(len(matriz)):
         for columna in range(len(matriz[fila])):
@@ -1557,14 +1596,10 @@ def buscar_entrada(matriz):
 
     return None
 
-
+#Función para contar la cantidad de tesoros presentes en el mapa
+#Entradas: El mapa en forma de matriz
+#Salidas: int con la cantidad de tesoros en el mapa
 def contar_tesoros_matriz(matriz):
-    """
-    Cuenta cuantos tesoros T existen en el mapa.
-    Esta funcion solo cuenta tesoros para el resumen.
-    No se usa para guiar el camino del algoritmo.
-    """
-
     cantidad = 0
 
     for fila in range(len(matriz)):
@@ -1574,12 +1609,10 @@ def contar_tesoros_matriz(matriz):
 
     return cantidad
 
-
+#Crea una copia de la matriz para utilizar la copia en lugar de la original 
+#Entradas : una matriz
+#salidas: matriz copiada
 def copiar_matriz(matriz):
-    """
-    Crea una copia independiente de una matriz.
-    Se usara para guardar el mapa original antes de modificarlo con V, R o *.
-    """
 
     copia = []
 
@@ -1593,11 +1626,10 @@ def copiar_matriz(matriz):
 
     return copia
 
-
+#Verifica si una posicion esta dentro del mapa
+#Entradas: la matriz, fila y columna
+#Salidas: Booleano 
 def posicion_dentro_del_mapa(matriz, fila, columna):
-    """
-    Verifica si una posicion esta dentro de los limites del mapa.
-    """
 
     if fila < 0:
         return False
@@ -1616,16 +1648,10 @@ def posicion_dentro_del_mapa(matriz, fila, columna):
 
     return True
 
-
+#Verifica si una celda puede ser recorrdia por el explorador
+#Entradas: Matriz, fila y columna
+#Salidas: Boolean
 def es_celda_transitable(matriz, fila, columna):
-    """
-    Verifica si una celda puede ser recorrida por el explorador.
-    Son transitables:
-    E, ., T y S
-
-    No son transitables:
-    #, X, V, R y *
-    """
 
     if not posicion_dentro_del_mapa(matriz, fila, columna):
         return False
@@ -1646,12 +1672,10 @@ def es_celda_transitable(matriz, fila, columna):
 
     return False
 
-
+#Retorna el nombre de una direccion según el orden establecido 
+#Entradas: Indice
+#Salidas: String
 def obtener_nombre_direccion(indice):
-    """
-    Retorna el nombre de una direccion segun el orden obligatorio.
-    """
-
     if indice == 0:
         return "Arriba"
 
@@ -1666,67 +1690,12 @@ def obtener_nombre_direccion(indice):
 
     return "Desconocida"
 
-
-def probar_utilidades_backtracking():
-    """
-    Funcion temporal para comprobar que las utilidades base funcionan.
-    Esta prueba no resuelve el laberinto todavia.
-    """
-
-    valido, mensaje = validar_mapa(mapa)
-
-    if not valido:
-        escribir_informacion(
-            "No se pueden probar las utilidades.\n"
-            + mensaje
-        )
-
-        messagebox.showerror(
-            "Mapa invalido",
-            mensaje
-        )
-        return
-
-    entrada = buscar_entrada(mapa)
-    total_tesoros = contar_tesoros_matriz(mapa)
-    copia = copiar_matriz(mapa)
-
-    mensaje_prueba = (
-        "Utilidades base del backtracking funcionando correctamente.\n"
-        "Entrada encontrada en fila "
-        + str(entrada[0])
-        + ", columna "
-        + str(entrada[1])
-        + ".\n"
-        "Tesoros totales en el mapa: "
-        + str(total_tesoros)
-        + ".\n"
-        "Copia del mapa creada correctamente: "
-        + str(len(copia))
-        + " filas x "
-        + str(len(copia[0]))
-        + " columnas.\n"
-        "Orden de movimiento preparado: Arriba, Derecha, Abajo, Izquierda."
-    )
-
-    escribir_informacion(mensaje_prueba)
-
-    messagebox.showinfo(
-        "Prueba de utilidades",
-        "Las utilidades base funcionan correctamente."
-    )
-
-# =========================================================
+# ----------------------------------------------------
 # BUSQUEDA DEL PRIMER TESORO CON BACKTRACKING ANIMADO
-# =========================================================
+# ----------------------------------------------------
 
+#EJECUTA LA BUSQUEDA DEL PRIMER TESORO
 def buscar_primer_tesoro():
-    """
-    Ejecuta la busqueda del primer tesoro accesible usando backtracking recursivo.
-    El algoritmo no conoce la posicion previa del tesoro.
-    Detecta el tesoro solamente cuando llega a una celda T.
-    La visualizacion se realiza con animacion usando ventana.after().
-    """
 
     global mapa
 
@@ -1802,14 +1771,10 @@ def buscar_primer_tesoro():
         estadisticas
     )
 
-
+#Backtracking recursivo para buscar el primer tesoro
+#Entradas: fila, columna, ruta actual, estadisticas y pasos animación
+#Salidas boolean
 def backtracking_primer_tesoro(fila, columna, ruta_actual, estadisticas, pasos_animacion):
-    """
-    Funcion recursiva de backtracking.
-    Intenta encontrar el primer tesoro accesible desde la posicion actual.
-    Orden de exploracion obligatorio:
-    arriba, derecha, abajo, izquierda.
-    """
 
     if not posicion_dentro_del_mapa(mapa, fila, columna):
         return False
@@ -1854,12 +1819,10 @@ def backtracking_primer_tesoro(fila, columna, ruta_actual, estadisticas, pasos_a
 
     return False
 
-
+#Agrega a la animación las casillas de la ruta final
+#Entradas: ruta actual, el mapa original y los pasos animacion 
+#Salidas:
 def agregar_pasos_ruta_final(ruta_actual, mapa_original, pasos_animacion):
-    """
-    Agrega a la animacion las casillas que forman parte de la ruta final.
-    No reemplaza visualmente E, T ni S.
-    """
 
     for posicion in ruta_actual:
         fila = posicion[0]
@@ -1870,12 +1833,8 @@ def agregar_pasos_ruta_final(ruta_actual, mapa_original, pasos_animacion):
         if simbolo_original != "E" and simbolo_original != "T" and simbolo_original != "S":
             pasos_animacion.append(["*", fila, columna])
 
-
+#Muestra paso a paso cada casilla por la que transitamos 
 def animar_pasos_busqueda(pasos_animacion, indice, mapa_original, encontrado, estadisticas):
-    """
-    Muestra paso a paso la busqueda usando ventana.after().
-    Al terminar, registra el resultado para poder guardarlo.
-    """
 
     if indice >= len(pasos_animacion):
         finalizar_animacion_busqueda(encontrado, estadisticas, mapa_original)
@@ -1902,12 +1861,8 @@ def animar_pasos_busqueda(pasos_animacion, indice, mapa_original, encontrado, es
         )
     )
 
-
+#Aplica marca visual al mapa durante la animación 
 def aplicar_paso_animacion(tipo_marca, fila, columna, mapa_original):
-    """
-    Aplica una marca visual al mapa durante la animacion.
-    Conserva entrada, tesoros, paredes, trampas y salidas.
-    """
 
     global mapa
 
@@ -1930,12 +1885,8 @@ def aplicar_paso_animacion(tipo_marca, fila, columna, mapa_original):
 
     mapa[fila][columna] = tipo_marca
 
-
+#Muestra el resultado final de la animación 
 def finalizar_animacion_busqueda(encontrado, estadisticas, mapa_original):
-    """
-    Muestra el resumen final despues de terminar la animacion.
-    Tambien registra el resultado para poder guardarlo en archivo .txt.
-    """
 
     if encontrado:
         fila_tesoro = estadisticas["tesoro_encontrado"][0]
@@ -2011,12 +1962,8 @@ def finalizar_animacion_busqueda(encontrado, estadisticas, mapa_original):
             "No se encontro ningun tesoro accesible desde la entrada."
         )
 
-
+#Limpia las marcas antes de iniciar una nueva búsqueda 
 def limpiar_marcas_sin_mensaje():
-    """
-    Limpia V, R y * sin mostrar ventanas emergentes.
-    Se usa internamente antes de iniciar una nueva busqueda.
-    """
 
     global mapa
 
@@ -2025,16 +1972,11 @@ def limpiar_marcas_sin_mensaje():
             if mapa[fila][columna] == "V" or mapa[fila][columna] == "R" or mapa[fila][columna] == "*":
                 mapa[fila][columna] = "."
 
-# =========================================================
+# --------------------------------------------------------
 # BUSQUEDA DE TODOS LOS TESOROS CON BACKTRACKING ANIMADO
-# =========================================================
-
+# ---------------------------------------------------------
+#EJECUTA LA BÚSQUEDA DE TODOS LOS TESOROS
 def buscar_todos_los_tesoros():
-    """
-    Ejecuta una busqueda completa para encontrar todos los tesoros accesibles.
-    El algoritmo no conoce previamente las posiciones de los tesoros.
-    Los registra solamente cuando llega a una celda T durante la exploracion.
-    """
 
     global mapa
 
@@ -2114,12 +2056,8 @@ def buscar_todos_los_tesoros():
         estadisticas
     )
 
-
+#Crea una matriz booleana que controla las casillas que ya se han visitado durante el backtracking 
 def crear_matriz_visitados(filas, columnas):
-    """
-    Crea una matriz booleana para controlar las celdas ya visitadas.
-    Esto evita ciclos infinitos sin depender solamente de cambiar simbolos del mapa.
-    """
 
     visitados = []
 
@@ -2133,12 +2071,10 @@ def crear_matriz_visitados(filas, columnas):
 
     return visitados
 
-
+#BACKTRACKING RECURSIVO PARA BUSCAR TODOS LOS TESOROS
+#ENTRADAS: FILA, COLUMNA, VISITADOS, RUTA ACTUAL, ESTADISTICAS Y PASOS DE LA ANIMACIÓN
+#SALIDAS: BOOLEANOS 
 def backtracking_todos_los_tesoros(fila, columna, visitados, ruta_actual, estadisticas, pasos_animacion):
-    """
-    Backtracking recursivo para explorar todos los caminos accesibles.
-    Continúa explorando aun despues de encontrar un tesoro.
-    """
 
     if not posicion_dentro_del_mapa(mapa, fila, columna):
         return
@@ -2190,11 +2126,8 @@ def backtracking_todos_los_tesoros(fila, columna, visitados, ruta_actual, estadi
         estadisticas["retrocesos"] = estadisticas["retrocesos"] + 1
         pasos_animacion.append(["R", fila, columna])
 
-
+#Crea copia independientemente de la ruta 
 def copiar_ruta(ruta):
-    """
-    Crea una copia independiente de una ruta.
-    """
 
     copia = []
 
@@ -2203,12 +2136,8 @@ def copiar_ruta(ruta):
 
     return copia
 
-
+#Agrega animación final hacia los tesoros encontrados 
 def agregar_pasos_rutas_todos_los_tesoros(rutas_encontradas, mapa_original, pasos_animacion):
-    """
-    Agrega al final de la animacion las rutas hacia los tesoros encontrados.
-    Se agregan al final para que los retrocesos no borren visualmente la ruta final.
-    """
 
     for ruta in rutas_encontradas:
         for posicion in ruta:
@@ -2220,11 +2149,8 @@ def agregar_pasos_rutas_todos_los_tesoros(rutas_encontradas, mapa_original, paso
             if simbolo_original != "E" and simbolo_original != "T" and simbolo_original != "S":
                 pasos_animacion.append(["*", fila, columna])
 
-
+#Anima los pasos hacia la búsqueda de todos los tesoros
 def animar_pasos_busqueda_todos(pasos_animacion, indice, mapa_original, estadisticas):
-    """
-    Anima la busqueda completa de todos los tesoros usando ventana.after().
-    """
 
     if indice >= len(pasos_animacion):
         finalizar_animacion_busqueda_todos(estadisticas, mapa_original)
@@ -2250,11 +2176,8 @@ def animar_pasos_busqueda_todos(pasos_animacion, indice, mapa_original, estadist
         )
     )
 
-
+#Muestra el resumen final de la busqueda
 def finalizar_animacion_busqueda_todos(estadisticas,mapa_original):
-    """
-    Muestra el resumen final de la busqueda de todos los tesoros.
-    """
 
     total_tesoros = estadisticas["total_tesoros"]
     encontrados = len(estadisticas["tesoros_encontrados"])
@@ -2325,11 +2248,8 @@ def finalizar_animacion_busqueda_todos(estadisticas,mapa_original):
             + "."
         )
 
-
+#Construye texto con las posiciones de los tesoros encontrados 
 def obtener_texto_posiciones_tesoros(tesoros_encontrados):
-    """
-    Construye un texto con las posiciones de los tesoros encontrados.
-    """
 
     if len(tesoros_encontrados) == 0:
         return "Posiciones de tesoros encontrados: ninguna."
@@ -2351,10 +2271,10 @@ def obtener_texto_posiciones_tesoros(tesoros_encontrados):
 
     return texto
 
-# =========================================================
+# ----------------------------------
 # GUARDADO DE RESULTADOS DE BUSQUEDA
-# =========================================================
-
+# ----------------------------------
+#Registra el ultimo resultado de busqueda 
 def registrar_ultimo_resultado_busqueda(
     tipo_busqueda,
     mapa_original,
@@ -2363,10 +2283,7 @@ def registrar_ultimo_resultado_busqueda(
     tesoros_encontrados,
     resultado_final
 ):
-    """
-    Guarda en memoria los datos de la ultima busqueda realizada.
-    Estos datos se usaran cuando el usuario presione Guardar resultado.
-    """
+    
 
     global ultimo_resultado_busqueda
 
@@ -2380,11 +2297,8 @@ def registrar_ultimo_resultado_busqueda(
         "fecha_hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     }
 
-
+#Crea copia independiente de la lista de posiciones 
 def copiar_lista_posiciones(lista_posiciones):
-    """
-    Crea una copia independiente de una lista de posiciones.
-    """
 
     copia = []
 
@@ -2393,11 +2307,8 @@ def copiar_lista_posiciones(lista_posiciones):
 
     return copia
 
-
+#GENERA EL CONTENIDO COMPLETO DEL REPORTE DE BUSQUEDA 
 def generar_texto_reporte_resultado():
-    """
-    Genera el contenido completo del reporte de busqueda.
-    """
 
     if ultimo_resultado_busqueda is None:
         return None
@@ -2452,11 +2363,8 @@ def generar_texto_reporte_resultado():
 
     return texto
 
-
+#Guarda en un archivo txt la información de la ultima busqueda realizada
 def guardar_resultado():
-    """
-    Guarda en un archivo .txt el resultado de la ultima busqueda realizada.
-    """
 
     if ultimo_resultado_busqueda is None:
         messagebox.showerror(
@@ -2517,36 +2425,7 @@ def guardar_resultado():
             + str(error)
         )
 
-# =========================================================
-# ACCIONES TEMPORALES
-# =========================================================
-
-def accion_pendiente():
-    escribir_informacion(
-        "Estado: accion pendiente de implementar.\n"
-        "La base visual ya esta lista para conectar esta funcion en la siguiente fase."
-    )
-
-    messagebox.showinfo(
-        "Proxima fase",
-        "Esta accion se implementara despues de dejar lista la base visual."
-    )
-
-
-def abrir_editor_placeholder():
-    escribir_informacion(
-        "Estado: modo editar mapa seleccionado.\n"
-        "Las herramientas de celdas no estaran en el menu principal. "
-        "Se abriran en una seccion separada para editar el mapa con orden."
-    )
-
-    messagebox.showinfo(
-        "Editar mapa",
-        "Correcto: las herramientas de celdas no iran en el menu principal.\n\n"
-        "En la siguiente fase abriremos un modo de edicion separado con sus propias herramientas."
-    )
-
-
+#Función para cerrar el programa 
 def salir():
     confirmar = messagebox.askyesno(
         "Salir del programa",
@@ -2557,9 +2436,7 @@ def salir():
         ventana.destroy()
 
 
-# =========================================================
 # INICIO DEL PROGRAMA
-# =========================================================
 
 ventana = tk.Tk()
 ventana.title("Exploradores del Laberinto Perdido")
@@ -2568,7 +2445,7 @@ ventana.minsize(800, 820)
 ventana.configure(bg=COLOR_FONDO)
 
 mapa = crear_mapa_demo_20x20()
-
+crear_contenedor_scroll()
 crear_interfaz()
 dibujar_mapa()
 mostrar_informacion_inicial()
